@@ -38,8 +38,8 @@ Each pack lives under `internal/adversarial/data/<pack>/` and is embedded into t
 ## Quick start
 
 ```sh
-# Run both packs against the default engine (mock if no --skill given)
-waza adversarial --packs prompt-injection,scope-bypass
+# Run both packs against the default executor
+waza adversarial --packs prompt-injection,scope-bypass --skill my-skill
 
 # Run against a real skill via the Copilot SDK engine
 waza adversarial --packs prompt-injection --skill ./skills/my-skill --model gpt-4o
@@ -97,8 +97,8 @@ waza adversarial --spec eval.yaml --on-unsafe-outcome warn
 | `--list-packs` | Print the pack catalog and exit | — |
 | `--on-unsafe-outcome` | `fail` (exit 2) or `warn` (exit 0) on unsafe | `fail` |
 | `--spec` | Inherit `adversarial:`, `graders`, and `metrics` from a spec | — |
-| `--engine` | Engine to use (`mock`, `copilot-sdk`) | inferred |
-| `--skill` | Skill path/identifier (forwards to the engine) | — |
+| `--engine` | Product executor to use | `copilot-sdk` |
+| `--skill` | Skill path/identifier (required) | — |
 | `--model` | Model passed to the engine | — |
 | `--output` | Write the full `results.json` to a file | — |
 | `--workers` / `--parallel` | Concurrency knobs (same semantics as `waza run`) | — |

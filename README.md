@@ -1,5 +1,10 @@
 # Waza
 
+> **Independent fork:** This repository is maintained by `laizhihui874-cmd` as
+> the Waza Multi-Executor fork. It is derived from
+> [`microsoft/waza`](https://github.com/microsoft/waza) under the MIT License
+> and is not affiliated with, sponsored by, or endorsed by Microsoft.
+
 A Go CLI for evaluating AI agent skills — scaffold eval suites, run benchmarks, and compare results across models.
 
 📖 **[Getting Started / Docs](https://microsoft.github.io/waza/)**
@@ -299,6 +304,7 @@ waza new eval code-explainer --output evals/custom-code-explainer/eval.yaml
 ### `waza new task from-prompt <prompt> <task-path>`
 
 Run a prompt through Copilot and generate a task YAML with inferred validators based on observed behavior (response text, tool usage, and invoked skills).
+This auxiliary command is Copilot SDK-only and does not use the executor configured in `eval.yaml`.
 
 | Flag | Description |
 |------|-------------|
@@ -345,10 +351,11 @@ Run an evaluation benchmark from a spec file.
 | `--baseline` | | A/B testing mode — runs each task twice (without skill = baseline, with skill = normal) and computes improvement scores |
 | `--discover` | | Auto skill discovery — walks directory tree for SKILL.md + eval.yaml (root/tests/evals) |
 | `--strict` | | Fail if any SKILL.md lacks eval coverage (use with `--discover`) |
-| `--suggest` | | Generate a Copilot suggestion report based on test outcomes (`mock` engine emits a deterministic fake report) |
+| `--suggest` | | Generate a Copilot suggestion report based on test outcomes (requires `copilot-sdk`) |
 | `--output-dir <dir>` | | Directory for structured output; each run creates a UTC timestamped subdirectory. Mutually exclusive with `--output`. |
 | `--tags <patterns>` | | Filter tasks by tags, using glob patterns (repeatable) |
 | `--model <name>` | | Override model (repeatable for multi-model comparison) |
+| `--executor <name>` | | Override `config.executor` for this run |
 | `--recommend` | | Generate heuristic recommendation after multi-model run |
 | `--judge-model <model>` | | Model for LLM-as-judge graders (overrides execution model) |
 | `--session-log` | | Enable session event logging (NDJSON) |
@@ -1003,7 +1010,7 @@ cmd/waza/              CLI entrypoint and command definitions
   tokens/              Token counting subcommand
 internal/
   config/              Configuration with functional options
-  execution/           AgentEngine interface (mock, copilot)
+  execution/           AgentEngine registry and Copilot/CLI adapters
   graders/             Validator registry and built-in graders
   metrics/             Scoring metrics
   models/              Data structures (EvalSpec, TestCase, EvaluationOutcome)
@@ -1017,6 +1024,12 @@ skills/                Example skills
 
 ## Eval Spec Format
 
+Waza supports five product executors: `copilot-sdk`, `codex-cli`, `claude-cli`, `hermes-cli`, and `generic-cli`. The three built-in CLI adapters use the locally installed authenticated client. `generic-cli` launches an argv array directly (never through a shell), sends the prompt over stdin by default, and only inherits environment variables named in `env_allowlist`.
+
+CLI executors use native skill discovery in isolated workspaces. Codex receives `.agents/skills/<skill>`, Claude receives `.claude/skills/<skill>`, and Hermes receives a run-local external skill directory. If a same-named global skill could contaminate the baseline, Waza fails before execution. Graders that require unsupported evidence such as MCP, skill-invocation events, prompt tools, or tool traces fail capability preflight instead of being skipped.
+
+See [Executor configuration](docs/EXECUTORS.md) for the capability matrix, generic JSONL protocol, skill isolation, and process behavior.
+
 ```yaml
 name: my-eval
 skill: my-skill
@@ -1028,8 +1041,11 @@ config:
   max_attempts: 3          # Retry failed graders up to 3 times (default: 1, no retries)
   timeout_seconds: 300
   parallel: false
-  executor: mock          # or copilot-sdk
-  model: claude-sonnet-4-20250514
+  executor: codex-cli
+  model: gpt-5.5
+  executor_config:
+    command: codex             # optional for built-in CLI executors
+    args: []
   group_by: model          # Group results by model (or other dimension)
   instruction_files:
     - .github/instructions/project.instructions.md
@@ -1194,7 +1210,7 @@ Relative fixture paths are resolved from the eval spec directory. Directory fixt
 
 ### Skill Body Injection
 
-By default, an eval with `skill: <name>` injects the target `SKILL.md` or `.agent.md` body into the agent system prompt. For trigger-precision evals, disable that body injection while preserving the skill association and compact skill summary:
+For `copilot-sdk`, an eval with `skill: <name>` injects the target `SKILL.md` or `.agent.md` body into the agent system prompt by default. CLI executors ignore this compatibility option and rely on native skill discovery. For Copilot trigger-precision evals, disable body injection while preserving the skill association and compact skill summary:
 
 ```yaml
 skill: xyz
@@ -1476,8 +1492,8 @@ jobs:
 | Requirement | Details |
 |-------------|---------|
 | **Go Version** | 1.26 or higher |
-| **Executor** | Use `mock` executor for CI (no API keys needed) |
-| **Copilot Auth** | Required for the default `copilot-sdk` route; set `GITHUB_TOKEN` in CI. Custom providers can be configured with `COPILOT_BASE_URL` or `COPILOT_PROVIDER_BASE_URL` instead. |
+| **Executor** | Install and authenticate the selected Copilot, Codex, Claude, or Hermes client. `generic-cli` requires an explicit command. |
+| **Authentication** | Use the selected client's normal CI authentication. Custom Copilot providers can use `COPILOT_BASE_URL` or `COPILOT_PROVIDER_BASE_URL`. |
 | **Exit Codes** | 0=success, 1=test failure, 2=config error |
 
 #### Expected Skill Structure

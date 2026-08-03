@@ -79,6 +79,7 @@ type Config struct {
 	Workers              int            `yaml:"workers,omitempty" json:"workers,omitempty"`
 	StopOnError          bool           `yaml:"fail_fast,omitempty" json:"stop_on_error,omitempty"`
 	EngineType           string         `yaml:"executor" json:"engine_type"`
+	ExecutorConfig       ExecutorConfig `yaml:"executor_config,omitempty" json:"executor_config,omitempty"`
 	ModelID              string         `yaml:"model" json:"model_id"`
 	SkillPaths           []string       `yaml:"skill_directories,omitempty" json:"skill_paths,omitempty"`
 	InstructionFiles     []string       `yaml:"instruction_files,omitempty" json:"instruction_files,omitempty"`
@@ -89,6 +90,20 @@ type Config struct {
 	MaxAttempts          int            `yaml:"max_attempts,omitempty" json:"max_attempts,omitempty"`
 	GroupBy              string         `yaml:"group_by,omitempty" json:"group_by,omitempty"`
 	JudgeModel           string         `yaml:"judge_model,omitempty" json:"judge_model,omitempty"`
+}
+
+// ExecutorConfig contains process-level options for CLI-backed executors.
+// Command and Args are passed directly to os/exec; they are never interpreted
+// as a shell command. Built-in executors provide safe defaults for omitted
+// fields, while generic-cli requires Command.
+type ExecutorConfig struct {
+	Command             string   `yaml:"command,omitempty" json:"command,omitempty"`
+	Args                []string `yaml:"args,omitempty" json:"args,omitempty"`
+	PromptTransport     string   `yaml:"prompt_transport,omitempty" json:"prompt_transport,omitempty"`
+	OutputFormat        string   `yaml:"output_format,omitempty" json:"output_format,omitempty"`
+	EnvAllowlist        []string `yaml:"env_allowlist,omitempty" json:"env_allowlist,omitempty"`
+	AllowSkillShadowing bool     `yaml:"allow_skill_shadowing,omitempty" json:"allow_skill_shadowing,omitempty"`
+	SafeMode            *bool    `yaml:"safe_mode,omitempty" json:"safe_mode,omitempty"`
 }
 
 // MCPMockConfig defines a deterministic MCP server mock launched for an eval.

@@ -1,6 +1,6 @@
-# Integration Testing with Copilot SDK
+# Integration Testing with Real Executors
 
-This guide explains how to run real integration tests using the GitHub Copilot SDK.
+This guide explains how to run integration tests with Copilot SDK or a locally installed Codex, Claude, Hermes, or generic CLI.
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@ This guide explains how to run real integration tests using the GitHub Copilot S
    curl -fsSL https://raw.githubusercontent.com/microsoft/waza/main/install.sh | bash
    ```
 
-2. **Authenticate with Copilot CLI:**
+2. **Install and authenticate the executor you plan to use.** For example, for Copilot:
    ```bash
    copilot
    # Follow prompts to authenticate
@@ -125,10 +125,15 @@ waza compare results-gpt4o.json results-claude.json
 
 ## Executor Types
 
-| Executor | Description | Use Case |
-|----------|-------------|----------|
-| `mock` | Echoes task metadata, context, and file content previews (up to 1KB per file) | Unit tests, CI without API keys |
-| `copilot-sdk` | Real Copilot agent sessions | Integration tests, benchmarking |
+| Executor | Native protocol | Evidence available |
+|----------|-----------------|--------------------|
+| `copilot-sdk` | Copilot SDK session | Tool events, MCP, skill invocation, usage, sessions, prompt tools |
+| `codex-cli` | `codex exec --json --ephemeral` | Final output, workspace files, command/MCP tool events, usage |
+| `claude-cli` | `claude -p --output-format stream-json` | Final output, workspace files, usage |
+| `hermes-cli` | Hermes one-shot plus usage file | Final output, workspace files, usage |
+| `generic-cli` | User command with `text` or `jsonl` output | Final output, workspace files, normalized usage |
+
+Use `waza run eval.yaml --executor <name>` to override the YAML executor for one run. Executor-specific command arguments remain in `config.executor_config`.
 
 ## CopilotExecutor Features
 
@@ -192,26 +197,26 @@ Model Comparison Report
 
 ## CI/CD Integration
 
-### Skip Integration Tests in CI
+### Gate authenticated integration tests in CI
 
 Integration tests require authentication and are typically skipped in CI:
 
 ```yaml
 # .github/workflows/test.yaml
-- name: Run unit tests
-  run: waza run eval.mock.yaml
-  
-- name: Run integration tests (manual only)
+- name: Validate skill and eval files
+  run: waza check ./skills/my-skill
+
+- name: Run authenticated evaluation (manual only)
   if: github.event_name == 'workflow_dispatch'
-  run: waza run eval.yaml
+  run: waza run eval.yaml --executor codex-cli
 ```
 
 ### Environment Variables
 
 | Variable | Effect |
 |----------|--------|
-| `CI=true` | Auto-detected in CI; forces mock executor |
-| `SKIP_INTEGRATION_TESTS=true` | Explicitly skip real SDK tests |
+| Client-specific auth variables | Used by the selected executor's normal authentication flow |
+| `executor_config.env_allowlist` | Explicit variables exposed to `generic-cli` |
 
 ## Troubleshooting
 

@@ -4,8 +4,8 @@ schemaVersion: "1.0"
 version: "1.0"
 
 config:
-  executor: mock
-  model: mock
+  executor: codex-cli
+  model: gpt-5.5
   timeout_seconds: 60
 
 tasks:

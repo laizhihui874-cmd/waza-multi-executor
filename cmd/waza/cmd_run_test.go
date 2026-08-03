@@ -49,6 +49,7 @@ func resetRunGlobals() {
 	disableCache = false
 	runCacheDir = ".waza-cache"
 	modelOverrides = nil
+	executorOverride = ""
 	recommendFlag = false
 	baselineFlag = false
 	sessionLog = false
@@ -69,9 +70,74 @@ func resetRunGlobals() {
 	autoIssueNowFn = time.Now
 	autoIssueGetenvFn = os.Getenv
 	newCopilotClientFn = nil
+	newEngineRegistryFn = func() *execution.EngineRegistry {
+		registry := newProductEngineRegistry()
+		err := registry.Register("mock", execution.EngineCapabilities{
+			ToolEvents: true, Usage: true, MCP: true, SkillInvocations: true, Sessions: true, PromptTools: true,
+		}, func(cfg execution.EngineConfig) (execution.AgentEngine, error) {
+			return execution.NewMockEngine(cfg.ModelID), nil
+		})
+		if err != nil {
+			panic(err)
+		}
+		return registry
+	}
 	newBenchmarkRunner = func(cfg *config.EvalConfig, engine execution.AgentEngine, opts ...orchestration.RunnerOption) benchmarkRunner {
 		return orchestration.NewEvalRunner(cfg, engine, opts...)
 	}
+}
+
+func TestWarnExecutorCompatibility(t *testing.T) {
+	inject := true
+	tests := []struct {
+		name     string
+		executor string
+		want     string
+	}{
+		{name: "copilot migration", executor: "copilot-sdk", want: "Copilot compatibility option"},
+		{name: "native discovery", executor: "codex-cli", want: "is ignored"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var output bytes.Buffer
+			warnExecutorCompatibility(&output, &models.EvalSpec{Config: models.Config{
+				EngineType: tc.executor, InjectSkillBody: &inject,
+			}})
+			assert.Contains(t, output.String(), tc.want)
+		})
+	}
+}
+
+func TestPreflightExecutorCapabilitiesChecksTaskGraders(t *testing.T) {
+	dir := t.TempDir()
+	tasksDir := filepath.Join(dir, "tasks")
+	require.NoError(t, os.MkdirAll(tasksDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tasksDir, "behavior.yaml"), []byte(`id: behavior
+name: Behavior task
+inputs:
+  prompt: test
+graders:
+  - type: behavior
+    name: behavior
+`), 0o600))
+	spec := &models.EvalSpec{Tasks: []string{"tasks/*.yaml"}}
+
+	_, err := preflightExecutorCapabilities(spec, dir, execution.EngineDescriptor{Name: "generic-cli"}, false)
+	require.ErrorContains(t, err, "tool events")
+
+	_, err = preflightExecutorCapabilities(spec, dir, execution.EngineDescriptor{Name: "generic-cli"}, true)
+	require.NoError(t, err)
+}
+
+func TestPreflightExecutorCapabilitiesRejectsTriggerTests(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "trigger_tests.yaml"), []byte(`skill: target
+should_trigger_prompts:
+  - prompt: use target
+`), 0o600))
+
+	_, err := preflightExecutorCapabilities(&models.EvalSpec{}, dir, execution.EngineDescriptor{Name: "codex-cli"}, true)
+	require.ErrorContains(t, err, "trigger_tests.yaml")
 }
 
 // helper creates a valid minimal eval spec YAML in a temp dir,
@@ -284,7 +350,19 @@ tasks:
 	cmd.SetArgs([]string{specPath})
 	err := cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown engine type")
+	assert.Contains(t, err.Error(), "unknown executor")
+}
+
+func TestRunCommand_ExecutorFlagOverridesSpec(t *testing.T) {
+	resetRunGlobals()
+	specPath := createTestSpec(t, "mock")
+	cmd := newRunCommand()
+	cmd.SetArgs([]string{specPath, "--executor", "generic-cli"})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "generic-cli")
+	assert.Contains(t, err.Error(), "executor_config.command")
 }
 
 // ---------------------------------------------------------------------------
@@ -725,7 +803,7 @@ tasks:
 	// Verify it's NOT a TestFailureError (it's a config error)
 	var testFailureErr *TestFailureError
 	assert.False(t, errors.As(err, &testFailureErr), "expected regular error, not TestFailureError")
-	assert.Contains(t, err.Error(), "unknown engine type")
+	assert.Contains(t, err.Error(), "unknown executor")
 }
 
 // ---------------------------------------------------------------------------
@@ -1139,7 +1217,7 @@ func TestRunCommand_RecommendSetsMetadata(t *testing.T) {
 	}
 }
 
-func TestRunCommand_SuggestFlagSkipsReportWhenAllPass(t *testing.T) {
+func TestRunCommand_SuggestRejectsUnsupportedExecutor(t *testing.T) {
 	resetRunGlobals()
 
 	specPath := createTestSpec(t, "mock")
@@ -1152,14 +1230,10 @@ func TestRunCommand_SuggestFlagSkipsReportWhenAllPass(t *testing.T) {
 
 	execErr := cmd.Execute()
 
-	require.NoError(t, execErr)
-
-	output := buf.String()
-	assert.NotContains(t, output, "SUGGESTIONS (test-model)")
-	assert.NotContains(t, output, "Deterministic mock suggestion report")
+	require.ErrorContains(t, execErr, `--suggest requires executor "copilot-sdk"`)
 }
 
-func TestRunCommand_SuggestSkipsMetadataWhenAllPass(t *testing.T) {
+func TestRunCommand_SuggestDoesNotWriteResultsForUnsupportedExecutor(t *testing.T) {
 	resetRunGlobals()
 
 	specPath := createTestSpec(t, "mock")
@@ -1171,23 +1245,11 @@ func TestRunCommand_SuggestSkipsMetadataWhenAllPass(t *testing.T) {
 	cmd.SetErr(io.Discard)
 
 	err := cmd.Execute()
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(outFile)
-	require.NoError(t, err)
-
-	var result map[string]any
-	require.NoError(t, json.Unmarshal(data, &result))
-
-	meta, ok := result["metadata"].(map[string]any)
-	if !ok {
-		return
-	}
-	_, hasSuggestion := meta["suggestion_report"]
-	assert.False(t, hasSuggestion, "metadata should not contain suggestion_report when all tests pass")
+	require.ErrorContains(t, err, `--suggest requires executor "copilot-sdk"`)
+	assert.NoFileExists(t, outFile)
 }
 
-func TestRunCommand_SuggestSetsMetadataWhenFailuresExist(t *testing.T) {
+func TestRunCommand_SuggestRejectsUnsupportedExecutorBeforeBenchmark(t *testing.T) {
 	resetRunGlobals()
 
 	specPath := createFailingTestSpec(t, "mock")
@@ -1199,19 +1261,8 @@ func TestRunCommand_SuggestSetsMetadataWhenFailuresExist(t *testing.T) {
 	cmd.SetErr(io.Discard)
 
 	err := cmd.Execute()
-	require.Error(t, err)
-
-	data, err := os.ReadFile(outFile)
-	require.NoError(t, err)
-
-	var result map[string]any
-	require.NoError(t, json.Unmarshal(data, &result))
-
-	meta, ok := result["metadata"].(map[string]any)
-	require.True(t, ok, "expected metadata key in output JSON")
-	suggestion, hasSuggestion := meta["suggestion_report"].(string)
-	require.True(t, hasSuggestion, "metadata should contain suggestion_report")
-	assert.Contains(t, suggestion, "Deterministic mock suggestion report")
+	require.ErrorContains(t, err, `--suggest requires executor "copilot-sdk"`)
+	assert.NoFileExists(t, outFile)
 }
 
 // ---------------------------------------------------------------------------

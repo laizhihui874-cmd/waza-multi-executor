@@ -15,6 +15,7 @@ import (
 	copilot "github.com/github/copilot-sdk/go"
 	"github.com/github/copilot-sdk/go/rpc"
 
+	"github.com/microsoft/waza/internal/copilotconfig"
 	"github.com/microsoft/waza/internal/copilotevents"
 	"github.com/microsoft/waza/internal/models"
 	"github.com/microsoft/waza/internal/skill"
@@ -368,16 +369,17 @@ func (e *CopilotEngine) Execute(ctx context.Context, req *ExecutionRequest) (*Ex
 
 	var session CopilotSession
 
-	permRequestCallback := allowAllTools
-	if req.PermissionHandler != nil {
-		permRequestCallback = req.PermissionHandler
-	}
+	permRequestCallback := copilotPermissionHandler(req.PermissionHandler)
+	tools := copilotTools(req.Tools)
+	mcpServers := copilotconfig.ConvertMCPServersWithMocks(req.MCPServers, req.MCPMocks, req.MCPBaseDir, func(format string, args ...any) {
+		fmt.Fprintf(os.Stderr, format, args...)
+	})
 
 	if req.SessionID == "" {
 		// Create session with updated API
 		session, err = e.client.CreateSession(ctx, &copilot.SessionConfig{
 			Model: modelID,
-			Tools: req.Tools,
+			Tools: tools,
 
 			OnPermissionRequest: permRequestCallback,
 
@@ -385,7 +387,7 @@ func (e *CopilotEngine) Execute(ctx context.Context, req *ExecutionRequest) (*Ex
 			WorkingDirectory: workingDir,
 			SystemMessage:    systemMessage,
 			Streaming:        streamingPtr(req.Streaming),
-			MCPServers:       req.MCPServers,
+			MCPServers:       mcpServers,
 			Provider:         e.provider.sessionConfig(),
 		})
 
@@ -395,7 +397,7 @@ func (e *CopilotEngine) Execute(ctx context.Context, req *ExecutionRequest) (*Ex
 	} else {
 		session, err = e.client.ResumeSessionWithOptions(ctx, req.SessionID, &copilot.ResumeSessionConfig{
 			Model: modelID,
-			Tools: req.Tools,
+			Tools: tools,
 
 			OnPermissionRequest: permRequestCallback,
 
@@ -404,7 +406,7 @@ func (e *CopilotEngine) Execute(ctx context.Context, req *ExecutionRequest) (*Ex
 			WorkingDirectory: workingDir,
 			SystemMessage:    systemMessage,
 			Streaming:        streamingPtr(req.Streaming),
-			MCPServers:       req.MCPServers,
+			MCPServers:       mcpServers,
 			Provider:         e.provider.sessionConfig(),
 		})
 

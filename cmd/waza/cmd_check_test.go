@@ -433,7 +433,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 60
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
 metrics:
   - name: accuracy
@@ -580,7 +580,7 @@ This skill analyzes code and provides explanations.
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skillContent), 0o644))
 
 	// eval.yaml from scaffold
-	evalContent := scaffold.EvalYAML(skillName, "mock", "gpt-4o")
+	evalContent := scaffold.EvalYAML(skillName, "codex-cli", "gpt-5.5")
 	require.NoError(t, os.WriteFile(filepath.Join(evalsDir, "eval.yaml"), []byte(evalContent), 0o644))
 
 	// Task files from scaffold
@@ -628,7 +628,7 @@ func TestCheckCommand_ScaffoldedEvalMatchesSchema(t *testing.T) {
 	skillName := "schema-scaffold-test"
 
 	// Write scaffold eval.yaml
-	evalContent := scaffold.EvalYAML(skillName, "mock", "gpt-4o")
+	evalContent := scaffold.EvalYAML(skillName, "codex-cli", "gpt-5.5")
 	evalPath := filepath.Join(dir, "eval.yaml")
 	require.NoError(t, os.WriteFile(evalPath, []byte(evalContent), 0o644))
 

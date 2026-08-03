@@ -24,7 +24,7 @@ config:
   parallel: false # Concurrent execution
   workers: 0 # Auto-size parallel workers
   model: claude-sonnet-4.6 # Default model
-  executor: mock # mock or copilot-sdk
+  executor: codex-cli
 
 graders: # Validation rules
   - type: text
@@ -291,19 +291,42 @@ config:
 
 ### executor
 
-**Type:** string  
-**Default:** mock  
-**Options:** `mock`, `copilot-sdk`
+**Type:** string
+**Default:** `copilot-sdk`
+**Options:** `copilot-sdk`, `codex-cli`, `claude-cli`, `hermes-cli`, `generic-cli`
 
 Execution engine:
 
-- `mock` — Local testing (no API calls)
-- `copilot-sdk` — Real LLM execution
+- `copilot-sdk` — Copilot SDK sessions with full event evidence
+- `codex-cli` — Local Codex JSONL execution
+- `claude-cli` — Local Claude stream-JSON execution
+- `hermes-cli` — Local Hermes one-shot execution
+- `generic-cli` — User-defined argv protocol (`text` or `jsonl`)
 
 ```yaml
 config:
   executor: copilot-sdk
 ```
+
+### executor_config
+
+**Type:** object
+**Default:** `{}`
+
+Configures a CLI-backed executor. Waza passes `command` and `args` directly to the operating system without a shell. `generic-cli` requires `command`; built-in CLI executors use `codex`, `claude`, or `hermes` by default.
+
+```yaml
+config:
+  executor: generic-cli
+  executor_config:
+    command: my-agent
+    args: ["--format", "jsonl"]
+    prompt_transport: stdin
+    output_format: jsonl
+    env_allowlist: [MY_AGENT_TOKEN]
+```
+
+The generic JSONL protocol accepts `assistant_message`, `result`, `usage`, and `error` events. Placeholders such as `{workspace}`, `{workdir}`, `{skill_dir}`, and `{model}` are expanded per run. `{prompt}` is only expanded when `prompt_transport: argument` is explicit.
 
 ### max_attempts
 
@@ -373,7 +396,7 @@ config:
 **Type:** boolean
 **Default:** true
 
-Controls whether Waza injects the full target `SKILL.md` or `.agent.md` body into the system prompt when `skill:` is set.
+Copilot compatibility option controlling whether Waza injects the full target `SKILL.md` or `.agent.md` body. CLI executors use native skill discovery and ignore this field with a migration warning.
 
 ```yaml
 config:

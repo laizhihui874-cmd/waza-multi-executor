@@ -133,7 +133,7 @@ tasks:
 	// Engine creation fails before Shutdown — this tests early-return path.
 	// No engine was created, so no Shutdown to call. This must NOT panic.
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown engine type")
+	assert.Contains(t, err.Error(), "unknown executor")
 }
 
 func TestRunSingleModel_ShutdownWithMultipleModels(t *testing.T) {

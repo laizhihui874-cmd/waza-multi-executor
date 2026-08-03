@@ -31,7 +31,7 @@ func newModelsCommandWithOptions(options *modelsCommandOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "models",
-		Short: "List available models",
+		Short: "List models available through the Copilot SDK",
 		Long:  `List models available for evaluation via the Copilot SDK.`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) (finalErr error) {

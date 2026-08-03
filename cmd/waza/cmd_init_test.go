@@ -308,7 +308,7 @@ description: |
 `), 0o644))
 
 	// Pre-create .waza.yaml so the config prompt is skipped
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".waza.yaml"), []byte("defaults:\n  engine: mock\n  model: gpt-5\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".waza.yaml"), []byte("defaults:\n  engine: codex-cli\n  model: gpt-5\n"), 0o644))
 
 	var buf bytes.Buffer
 	cmd := newInitCommand()
@@ -347,7 +347,7 @@ description: |
 	require.NoError(t, os.WriteFile(filepath.Join(evalDir, "eval.yaml"), []byte(evalContent), 0o644))
 
 	// Pre-create config
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".waza.yaml"), []byte("defaults:\n  engine: mock\n  model: gpt-5\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".waza.yaml"), []byte("defaults:\n  engine: codex-cli\n  model: gpt-5\n"), 0o644))
 
 	var buf bytes.Buffer
 	cmd := newInitCommand()
@@ -411,7 +411,7 @@ func TestInitCommand_ScaffoldedEvalContent(t *testing.T) {
 	require.NoError(t, os.MkdirAll(skillDir, 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "evals"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: test-skill\ntype: utility\ndescription: |\n  USE FOR: testing\n---\n# Test\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, ".waza.yaml"), []byte("defaults:\n  engine: mock\n  model: gpt-5\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".waza.yaml"), []byte("defaults:\n  engine: codex-cli\n  model: gpt-5\n"), 0o644))
 
 	cmd := newInitCommand()
 	cmd.SetOut(&bytes.Buffer{})
@@ -424,7 +424,7 @@ func TestInitCommand_ScaffoldedEvalContent(t *testing.T) {
 	content := string(data)
 	assert.Contains(t, content, "name: test-skill-eval")
 	assert.Contains(t, content, "skill: test-skill")
-	assert.Contains(t, content, "executor: mock")
+	assert.Contains(t, content, "executor: codex-cli")
 	assert.Contains(t, content, "model: gpt-5")
 }
 
@@ -441,11 +441,11 @@ func TestRootCommand_HasInitSubcommand(t *testing.T) {
 }
 
 func TestGenerateWazaConfig(t *testing.T) {
-	content := generateWazaConfig("mock", "gpt-5", "my-skills/", "my-evals/", "output/")
+	content := generateWazaConfig("codex-cli", "gpt-5", "my-skills/", "my-evals/", "output/")
 	assert.Contains(t, content, "skills: my-skills/")
 	assert.Contains(t, content, "evals: my-evals/")
 	assert.Contains(t, content, "results: output/")
-	assert.Contains(t, content, "engine: mock")
+	assert.Contains(t, content, "engine: codex-cli")
 	assert.Contains(t, content, "model: gpt-5")
 	assert.Contains(t, content, "cache:")
 	assert.Contains(t, content, "server:")

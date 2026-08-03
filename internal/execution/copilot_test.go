@@ -720,7 +720,10 @@ func TestCopilotCreateSession_PassesMCPServers(t *testing.T) {
 	sourceDir := t.TempDir()
 
 	mcpServers := map[string]copilot.MCPServerConfig{
-		"test-mcp": copilot.MCPStdioServerConfig{Command: "echo", Args: []string{"hello"}},
+		"test-mcp": copilot.MCPStdioServerConfig{Command: "echo", Args: []string{"hello"}, Tools: []string{"*"}},
+	}
+	mcpConfig := map[string]any{
+		"test-mcp": map[string]any{"type": "stdio", "command": "echo", "args": []string{"hello"}},
 	}
 
 	expectedConfig := sessionConfigMatcher{
@@ -755,7 +758,7 @@ func TestCopilotCreateSession_PassesMCPServers(t *testing.T) {
 	resp, err := engine.Execute(context.Background(), &ExecutionRequest{
 		Message:    "hello",
 		SourceDir:  sourceDir,
-		MCPServers: mcpServers,
+		MCPServers: mcpConfig,
 	})
 	require.NoError(t, err)
 	require.True(t, resp.Success)
@@ -775,7 +778,10 @@ func TestCopilotResumeSession_PassesMCPServersAndSystemMessage(t *testing.T) {
 	expectedSystemMsg := buildSkillSystemMessage([]string{sourceDir}, "resume-skill", true)
 
 	mcpServers := map[string]copilot.MCPServerConfig{
-		"mcp-srv": copilot.MCPStdioServerConfig{Command: "test"},
+		"mcp-srv": copilot.MCPStdioServerConfig{Command: "test", Tools: []string{"*"}},
+	}
+	mcpConfig := map[string]any{
+		"mcp-srv": map[string]any{"type": "stdio", "command": "test"},
 	}
 
 	expectedConfig := sessionConfigMatcher{
@@ -816,7 +822,7 @@ func TestCopilotResumeSession_PassesMCPServersAndSystemMessage(t *testing.T) {
 		SessionID:  "session-resume",
 		SkillName:  "resume-skill",
 		SourceDir:  sourceDir,
-		MCPServers: mcpServers,
+		MCPServers: mcpConfig,
 	})
 	require.NoError(t, err)
 	require.True(t, resp.Success)

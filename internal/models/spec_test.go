@@ -9,6 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestEvalSpec_Validate_FirstEventTimeout(t *testing.T) {
@@ -641,6 +645,36 @@ func TestConfig_AllSkillsDisabled(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEvalSpecParsesExecutorConfig(t *testing.T) {
+	var spec EvalSpec
+	err := yaml.Unmarshal([]byte(`
+name: executor-config
+skill: demo
+version: "1.0"
+config:
+  trials_per_task: 1
+  timeout_seconds: 60
+  parallel: false
+  executor: generic-cli
+  model: local-model
+  executor_config:
+    command: my-agent
+    args: [run, --jsonl]
+    prompt_transport: stdin
+    output_format: jsonl
+    env_allowlist: [AGENT_TOKEN]
+graders: []
+metrics: []
+tasks: []
+`), &spec)
+	require.NoError(t, err)
+	assert.Equal(t, "my-agent", spec.Config.ExecutorConfig.Command)
+	assert.Equal(t, []string{"run", "--jsonl"}, spec.Config.ExecutorConfig.Args)
+	assert.Equal(t, "stdin", spec.Config.ExecutorConfig.PromptTransport)
+	assert.Equal(t, "jsonl", spec.Config.ExecutorConfig.OutputFormat)
+	assert.Equal(t, []string{"AGENT_TOKEN"}, spec.Config.ExecutorConfig.EnvAllowlist)
 }
 
 func TestConfig_FilteredSkillPaths(t *testing.T) {

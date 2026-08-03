@@ -180,7 +180,10 @@ func TestBuildExecutionRequest_MCPMocks(t *testing.T) {
 		Stimulus:    models.TaskStimulus{Message: "Hello world"},
 	})
 	require.NoError(t, err)
-	require.Contains(t, req.MCPServers, "github")
+	require.Empty(t, req.MCPServers)
+	require.Len(t, req.MCPMocks, 1)
+	require.Equal(t, "github", req.MCPMocks[0].Name)
+	require.Equal(t, specDir, req.MCPBaseDir)
 }
 
 func TestBuildExecutionRequest_SuppressSkillBody(t *testing.T) {

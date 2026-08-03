@@ -14,7 +14,6 @@ import (
 
 	"github.com/microsoft/waza/internal/cache"
 	"github.com/microsoft/waza/internal/config"
-	"github.com/microsoft/waza/internal/copilotconfig"
 	"github.com/microsoft/waza/internal/copilotevents"
 	"github.com/microsoft/waza/internal/dataset"
 	"github.com/microsoft/waza/internal/execution"
@@ -1344,10 +1343,21 @@ func (r *EvalRunner) executeRun(ctx context.Context, tc *models.TestCase, runNum
 		WorkspaceDir:     resp.WorkspaceDir,
 		Responder:        responderInfo,
 		Checkpoints:      checkpointOutcomes,
-		ToolEvents:       buildToolEvents(sdkEvents),
+		ToolEvents:       mergeToolEvents(sdkEvents, resp.ToolEvents),
 	}
 	r.captureSnapshot(tc, req, resp, &run)
 	return returnWithArtifacts(run)
+}
+
+func mergeToolEvents(sdkEvents []copilot.SessionEvent, nativeEvents []models.ToolEvent) []models.ToolEvent {
+	legacyEvents := buildToolEvents(sdkEvents)
+	if len(nativeEvents) == 0 {
+		return legacyEvents
+	}
+	merged := make([]models.ToolEvent, 0, len(legacyEvents)+len(nativeEvents))
+	merged = append(merged, legacyEvents...)
+	merged = append(merged, nativeEvents...)
+	return merged
 }
 
 // captureSnapshot writes a self-contained snapshot.json for the given run
@@ -1502,7 +1512,9 @@ func (r *EvalRunner) buildExecutionRequest(tc *models.TestCase) (*execution.Exec
 		SkillPaths:        resolvedSkillPaths,
 		NoSkills:          noSkills,
 		SuppressSkillBody: !spec.Config.ShouldInjectSkillBody(),
-		MCPServers:        convertMCPServers(spec.Config.ServerConfigs, spec.MCPMocks, r.cfg.SpecDir()),
+		MCPServers:        spec.Config.ServerConfigs,
+		MCPMocks:          spec.MCPMocks,
+		MCPBaseDir:        r.cfg.SpecDir(),
 		FirstEventTimeout: r.firstEventTimeout(tc),
 	}, nil
 }
@@ -2030,14 +2042,6 @@ func containsPathTraversal(path string) bool {
 		}
 	}
 	return false
-}
-
-// convertMCPServers converts the eval YAML mcp_servers config (map[string]any)
-// into the copilot SDK's MCPServerConfig type. Returns nil if no servers configured.
-func convertMCPServers(serverConfigs map[string]any, mocks []models.MCPMockConfig, baseDir string) map[string]copilot.MCPServerConfig {
-	return copilotconfig.ConvertMCPServersWithMocks(serverConfigs, mocks, baseDir, func(format string, args ...any) {
-		fmt.Fprintf(os.Stderr, format, args...)
-	})
 }
 
 func (r *EvalRunner) buildGraderContext(tc *models.TestCase, resp *execution.ExecutionResponse, sdkEvents []copilot.SessionEvent) *graders.Context {

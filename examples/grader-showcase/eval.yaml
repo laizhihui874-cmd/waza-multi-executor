@@ -26,8 +26,8 @@ config:
   timeout_seconds: 300
   # Sequential execution for clarity
   parallel: false
-  # Use mock executor for fast testing (change to copilot-sdk for real tests)
-  executor: mock
+  # Several showcased graders require Copilot tool and skill event evidence.
+  executor: copilot-sdk
   # Default model
   model: claude-sonnet-4-20250514
 

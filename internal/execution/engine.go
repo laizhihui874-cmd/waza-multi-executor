@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	copilot "github.com/github/copilot-sdk/go"
-
 	"github.com/microsoft/waza/internal/agentevent"
 	"github.com/microsoft/waza/internal/copilotevents"
 	"github.com/microsoft/waza/internal/models"
@@ -57,7 +55,7 @@ type ExecutionRequest struct {
 	GitResources []models.GitResource
 	WorkDir      string
 	Instructions []InstructionFile
-	Tools        []copilot.Tool
+	Tools        []Tool
 
 	MessageMode MessageMode
 	Streaming   bool
@@ -97,13 +95,16 @@ type ExecutionRequest struct {
 	// while still allowing skill discovery and compact summaries.
 	SuppressSkillBody bool
 
-	// MCPServers configures MCP servers for the session. Keys are server names,
-	// values follow the copilot SDK MCPServerConfig format (type/command/args).
-	MCPServers map[string]copilot.MCPServerConfig
+	// MCPServers carries the engine-neutral YAML configuration. MCPMocks and
+	// MCPBaseDir let an adapter materialize hermetic mock servers at its native
+	// boundary without leaking SDK types into this request.
+	MCPServers map[string]any
+	MCPMocks   []models.MCPMockConfig
+	MCPBaseDir string
 
-	// PermissionHandler called when the copilot SDK wants to determine if a tool can be used.
-	// Default: allows all tools.
-	PermissionHandler copilot.PermissionHandlerFunc
+	// PermissionHandler decides native permission requests through a small,
+	// engine-neutral action vocabulary. Default: approve once.
+	PermissionHandler PermissionHandlerFunc
 
 	// CancelOnSkillInvocation, when true, causes the execution context to be
 	// canceled as soon as a SkillInvoked event is received. This allows trigger
@@ -147,6 +148,7 @@ type ExecutionResponse struct {
 	SkillInvocations []SkillInvocation
 	DurationMs       int64
 	ToolCalls        []models.ToolCall
+	ToolEvents       []models.ToolEvent
 	ErrorMsg         string
 	Success          bool
 	WorkspaceDir     string            // Path to workspace directory (for file grading)

@@ -76,14 +76,23 @@ func TestEvalYAML(t *testing.T) {
 }
 
 func TestEvalYAML_CustomEngine(t *testing.T) {
-	content := EvalYAML("my-skill", "mock", "gpt-4o")
+	content := EvalYAML("my-skill", "codex-cli", "gpt-5.5")
 
-	assert.Contains(t, content, "executor: mock")
-	assert.Contains(t, content, "model: gpt-4o")
+	assert.Contains(t, content, "executor: codex-cli")
+	assert.Contains(t, content, "model: gpt-5.5")
+}
+
+func TestEvalYAML_GenericCLIIncludesRequiredExecutorConfig(t *testing.T) {
+	content := EvalYAML("my-skill", "generic-cli", "local-model")
+
+	assert.Contains(t, content, "executor: generic-cli")
+	assert.Contains(t, content, "command: my-agent")
+	errList := validation.ValidateEvalBytes([]byte(content))
+	require.Empty(t, errList, "generic-cli scaffold should pass schema validation: %v", errList)
 }
 
 func TestEvalYAMLWithTaskGlob(t *testing.T) {
-	content := EvalYAMLWithTaskGlob("my-skill", "mock", "gpt-4o", "tasks/*.waza-task.yaml")
+	content := EvalYAMLWithTaskGlob("my-skill", "claude-cli", "claude-sonnet-4.6", "tasks/*.waza-task.yaml")
 
 	assert.Contains(t, content, `"tasks/*.waza-task.yaml"`)
 }
@@ -137,12 +146,12 @@ func TestReadProjectDefaults_WithConfig(t *testing.T) {
 	require.NoError(t, os.Chdir(dir))
 	t.Cleanup(func() { os.Chdir(origDir) }) //nolint:errcheck // best-effort cleanup
 
-	wazaConfig := "defaults:\n  engine: mock\n  model: gpt-4o\n"
+	wazaConfig := "defaults:\n  engine: codex-cli\n  model: gpt-5.5\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".waza.yaml"), []byte(wazaConfig), 0o644))
 
 	engine, model := ReadProjectDefaults()
-	assert.Equal(t, "mock", engine)
-	assert.Equal(t, "gpt-4o", model)
+	assert.Equal(t, "codex-cli", engine)
+	assert.Equal(t, "gpt-5.5", model)
 }
 
 func TestReadProjectFiles_WithConfig(t *testing.T) {
@@ -162,7 +171,7 @@ func TestReadProjectFiles_WithConfig(t *testing.T) {
 }
 
 func TestEvalYAML_SchemaCompliant(t *testing.T) {
-	content := EvalYAML("test-skill", "mock", "gpt-4o")
+	content := EvalYAML("test-skill", "codex-cli", "gpt-5.5")
 	errs := validation.ValidateEvalBytes([]byte(content))
 	require.Empty(t, errs, "scaffolded eval.yaml should pass schema validation: %v", errs)
 }

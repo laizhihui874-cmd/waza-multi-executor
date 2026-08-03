@@ -180,8 +180,8 @@ config:
   trials_per_task: 1           # Run each task once
   timeout_seconds: 300         # 5-minute timeout
   parallel: false              # Run tasks sequentially
-  executor: mock               # Use mock executor (no API calls)
-  model: gpt-4o
+  executor: codex-cli               # Uses your local Codex authentication
+  model: gpt-5.5
 
 graders:
   - type: code
@@ -519,9 +519,9 @@ tasks:
 
 And that you have `.yaml` files in `tasks/` directory.
 
-### "Mock executor always passes"
+### "Executor executable not found"
 
-The `mock` executor is meant for local iteration without API calls. For real evaluation, use `executor: copilot-sdk` with the default Copilot route or configure a custom Copilot SDK provider with `COPILOT_BASE_URL` / `COPILOT_PROVIDER_BASE_URL`.
+Install the client selected by `config.executor`, or set `config.executor_config.command` to its executable path. Use `waza run eval.yaml --executor <name>` for a one-run override.
 
 ---
 

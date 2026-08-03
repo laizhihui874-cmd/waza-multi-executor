@@ -46,37 +46,38 @@ import (
 )
 
 var (
-	contextDir      string
-	outputPath      string
-	outputDir       string
-	verbose         bool
-	transcriptDir   string
-	taskFilters     []string
-	tagFilters      []string
-	parallel        bool
-	workers         int
-	trials          int
-	interpret       bool
-	format          string
-	enableCache     bool
-	disableCache    bool
-	runCacheDir     string
-	modelOverrides  []string
-	recommendFlag   bool
-	baselineFlag    bool
-	suggestFlag     bool
-	sessionLog      bool
-	sessionDir      string
-	noSummary       bool
-	judgeModel      string
-	reporters       []string
-	discoverFlag    bool
-	strictFlag      bool
-	updateSnapshots bool
-	skipGradersFlag bool
-	noSkillsFlag    bool
-	keepWorkspace   bool
-	autoFileIssue   bool
+	contextDir       string
+	outputPath       string
+	outputDir        string
+	verbose          bool
+	transcriptDir    string
+	taskFilters      []string
+	tagFilters       []string
+	parallel         bool
+	workers          int
+	trials           int
+	interpret        bool
+	format           string
+	enableCache      bool
+	disableCache     bool
+	runCacheDir      string
+	modelOverrides   []string
+	executorOverride string
+	recommendFlag    bool
+	baselineFlag     bool
+	suggestFlag      bool
+	sessionLog       bool
+	sessionDir       string
+	noSummary        bool
+	judgeModel       string
+	reporters        []string
+	discoverFlag     bool
+	strictFlag       bool
+	updateSnapshots  bool
+	skipGradersFlag  bool
+	noSkillsFlag     bool
+	keepWorkspace    bool
+	autoFileIssue    bool
 
 	otelExporter        string
 	otelEndpoint        string
@@ -100,6 +101,8 @@ var (
 	newBenchmarkRunner = func(cfg *config.EvalConfig, engine execution.AgentEngine, opts ...orchestration.RunnerOption) benchmarkRunner {
 		return orchestration.NewEvalRunner(cfg, engine, opts...)
 	}
+
+	newEngineRegistryFn = newProductEngineRegistry
 
 	autoIssueLookPathFn   = exec.LookPath
 	autoIssueRunCommandFn = func(ctx context.Context, name string, args []string, stdout, stderr io.Writer) error {
@@ -159,6 +162,7 @@ You can also specify a skill name to run its eval:
 	cmd.Flags().BoolVar(&disableCache, "no-cache", false, "Disable result caching (default)")
 	cmd.Flags().StringVar(&runCacheDir, "cache-dir", ".waza-cache", "Cache directory for storing results")
 	cmd.Flags().StringArrayVar(&modelOverrides, "model", nil, "Model to use (overrides spec config, can be repeated for comparison)")
+	cmd.Flags().StringVar(&executorOverride, "executor", "", "Execution engine to use (overrides config.executor)")
 	cmd.Flags().BoolVar(&recommendFlag, "recommend", false, "Generate heuristic recommendation after multi-model run")
 	cmd.Flags().BoolVar(&baselineFlag, "baseline", false, "Run A/B comparison: with skills vs without skills")
 	cmd.Flags().BoolVar(&suggestFlag, "suggest", false, "Generate a Copilot report suggesting skill improvements based on test outcomes")
@@ -593,6 +597,9 @@ func runCommandForSpec(cmd *cobra.Command, sp skillSpecPath, defaultSkills []str
 	if judgeModel != "" {
 		spec.Config.JudgeModel = judgeModel
 	}
+	if executorOverride != "" {
+		spec.Config.EngineType = executorOverride
+	}
 
 	// Determine the list of models to evaluate
 	modelsToRun := []string{spec.Config.ModelID}
@@ -747,18 +754,25 @@ func runSingleModel(cmd *cobra.Command, spec *models.EvalSpec, specPath string, 
 		}
 	}
 
-	// Create engine based on spec
-	var engine execution.AgentEngine
-
-	switch spec.Config.EngineType {
-	case "mock":
-		engine = execution.NewMockEngine(spec.Config.ModelID)
-	case "copilot-sdk":
-		engine = execution.NewCopilotEngineBuilder(spec.Config.ModelID, &execution.CopilotEngineBuilderOptions{
-			NewCopilotClient: newCopilotClientFn, // if nil, uses the real function, otherwise overridable for tests.
-		}).Build()
-	default:
-		return nil, fmt.Errorf("unknown engine type: %s", spec.Config.EngineType)
+	// Create the selected engine through the registry. This is the single
+	// product selection point for built-in and user-configured executors.
+	registry := newEngineRegistryFn()
+	engine, descriptor, err := registry.Create(spec.Config.EngineType, execution.EngineConfig{
+		ModelID: spec.Config.ModelID,
+		Options: spec.Config.ExecutorConfig,
+	})
+	if err != nil {
+		return nil, err
+	}
+	discoveredTriggerSpec, err := preflightExecutorCapabilities(spec, specDir, descriptor, skipGradersFlag)
+	if err != nil {
+		return nil, err
+	}
+	if cmd != nil {
+		warnExecutorCompatibility(cmd.ErrOrStderr(), spec)
+	}
+	if suggestFlag && spec.Config.EngineType != "copilot-sdk" {
+		return nil, fmt.Errorf("--suggest requires executor %q; selected %q", "copilot-sdk", spec.Config.EngineType)
 	}
 	if keepWorkspace {
 		if wk, ok := engine.(execution.WorkspaceKeeper); ok {
@@ -916,40 +930,15 @@ func runSingleModel(cmd *cobra.Command, spec *models.EvalSpec, specPath string, 
 
 	var triggerResults []models.TriggerResult
 
-	// Discover and run trigger tests if present alongside the eval spec
-	if triggerSpec, err := trigger.Discover(specDir); err != nil {
-		return outcome, fmt.Errorf("loading trigger tests: %w", err)
-	} else if triggerSpec != nil {
-		var tm *models.TriggerMetrics
-		if spec.Config.EngineType == "mock" {
-			// return perfect results
-			var results []models.TriggerResult
-			for _, p := range triggerSpec.ShouldTriggerPrompts {
-				results = append(results, models.TriggerResult{
-					Prompt:        p.Prompt,
-					Confidence:    p.Confidence,
-					ShouldTrigger: true,
-					DidTrigger:    true,
-				})
-			}
-			for _, p := range triggerSpec.ShouldNotTriggerPrompts {
-				results = append(results, models.TriggerResult{
-					Prompt:        p.Prompt,
-					Confidence:    p.Confidence,
-					ShouldTrigger: false,
-					DidTrigger:    false,
-				})
-			}
-			triggerResults = results
-			tm = models.ComputeTriggerMetrics(results)
-		} else {
-			tr := trigger.NewRunner(triggerSpec, engine, cfg, os.Stdout)
-			if verbose {
-				fmt.Println("Running trigger tests...")
-			}
-			if triggerResults, tm, err = tr.RunDetailed(ctx); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: trigger tests failed: %v\n", err)
-			}
+	// Run trigger tests discovered during executor capability preflight.
+	if discoveredTriggerSpec != nil {
+		tr := trigger.NewRunner(discoveredTriggerSpec, engine, cfg, os.Stdout)
+		if verbose {
+			fmt.Println("Running trigger tests...")
+		}
+		triggerResults, tm, err := tr.RunDetailed(ctx)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: trigger tests failed: %v\n", err)
 		}
 		if tm != nil {
 			outcome.TriggerMetrics = tm
@@ -1046,6 +1035,85 @@ func runSingleModel(cmd *cobra.Command, spec *models.EvalSpec, specPath string, 
 	}
 
 	return outcome, nil
+}
+
+func preflightExecutorCapabilities(spec *models.EvalSpec, specDir string, descriptor execution.EngineDescriptor, skipGraders bool) (*trigger.TestSpec, error) {
+	capabilitySpec := spec
+	if skipGraders {
+		clone := *spec
+		clone.Graders = nil
+		capabilitySpec = &clone
+	}
+	if err := execution.ValidateCapabilities(capabilitySpec, descriptor); err != nil {
+		return nil, err
+	}
+	if !skipGraders {
+		testFiles, err := spec.ResolveTestFiles(specDir)
+		if err != nil {
+			return nil, fmt.Errorf("resolve task files for executor capability preflight: %w", err)
+		}
+		testCases := make([]*models.TestCase, 0, len(testFiles))
+		for _, path := range testFiles {
+			testCase, err := models.LoadTestCase(path)
+			if err != nil {
+				return nil, fmt.Errorf("load task %s for executor capability preflight: %w", path, err)
+			}
+			if testCase.Active == nil || *testCase.Active {
+				testCases = append(testCases, testCase)
+			}
+		}
+		if err := execution.ValidateTestCaseCapabilities(testCases, descriptor); err != nil {
+			return nil, err
+		}
+	}
+	triggerSpec, err := trigger.Discover(specDir)
+	if err != nil {
+		return nil, fmt.Errorf("loading trigger tests: %w", err)
+	}
+	if triggerSpec != nil && !descriptor.Capabilities.SkillInvocations {
+		return nil, fmt.Errorf("executor %q does not support required capabilities: skill invocation events (required by trigger_tests.yaml)", descriptor.Name)
+	}
+	return triggerSpec, nil
+}
+
+func warnExecutorCompatibility(w io.Writer, spec *models.EvalSpec) {
+	if spec == nil || spec.Config.InjectSkillBody == nil {
+		return
+	}
+	if spec.Config.EngineType == "copilot-sdk" {
+		_, _ = fmt.Fprintln(w, "Warning: config.inject_skill_body is a Copilot compatibility option; prefer native skill discovery for new evals.")
+		return
+	}
+	_, _ = fmt.Fprintf(w, "Warning: executor %q uses native skill discovery; config.inject_skill_body is ignored.\n", spec.Config.EngineType)
+}
+
+func newProductEngineRegistry() *execution.EngineRegistry {
+	registry := execution.NewEngineRegistry()
+	mustRegister := func(name string, capabilities execution.EngineCapabilities, factory execution.EngineFactory) {
+		if err := registry.Register(name, capabilities, factory); err != nil {
+			panic(err)
+		}
+	}
+	mustRegister("copilot-sdk", execution.EngineCapabilities{
+		ToolEvents: true, Usage: true, MCP: true, SkillInvocations: true, Sessions: true, PromptTools: true,
+	}, func(cfg execution.EngineConfig) (execution.AgentEngine, error) {
+		return execution.NewCopilotEngineBuilder(cfg.ModelID, &execution.CopilotEngineBuilderOptions{
+			NewCopilotClient: newCopilotClientFn,
+		}).Build(), nil
+	})
+	mustRegister("codex-cli", execution.EngineCapabilities{ToolEvents: true, Usage: true}, func(cfg execution.EngineConfig) (execution.AgentEngine, error) {
+		return execution.NewCodexCLIEngine(cfg.ModelID, cfg.Options), nil
+	})
+	mustRegister("claude-cli", execution.EngineCapabilities{Usage: true}, func(cfg execution.EngineConfig) (execution.AgentEngine, error) {
+		return execution.NewClaudeCLIEngine(cfg.ModelID, cfg.Options), nil
+	})
+	mustRegister("hermes-cli", execution.EngineCapabilities{Usage: true}, func(cfg execution.EngineConfig) (execution.AgentEngine, error) {
+		return execution.NewHermesCLIEngine(cfg.ModelID, cfg.Options), nil
+	})
+	mustRegister("generic-cli", execution.EngineCapabilities{Usage: true}, func(cfg execution.EngineConfig) (execution.AgentEngine, error) {
+		return execution.NewGenericCLIEngine(cfg.ModelID, cfg.Options), nil
+	})
+	return registry
 }
 
 // printModelComparison renders a comparison table for multi-model runs.

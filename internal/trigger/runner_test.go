@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	copilot "github.com/github/copilot-sdk/go"
 	"github.com/microsoft/waza/internal/config"
 	"github.com/microsoft/waza/internal/execution"
 	"github.com/microsoft/waza/internal/models"
@@ -416,26 +415,15 @@ func TestEvalRunnerPassesMCPServers(t *testing.T) {
 	require.NotNil(t, engine.LastReq())
 	require.Len(t, engine.LastReq().MCPServers, 1, "expected 1 MCP server")
 	require.Contains(t, engine.LastReq().MCPServers, "test-mcp")
-	stdio, ok := engine.LastReq().MCPServers["test-mcp"].(copilot.MCPStdioServerConfig)
+	stdio, ok := engine.LastReq().MCPServers["test-mcp"].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, []string{"*"}, stdio.Tools)
+	require.Equal(t, "echo", stdio["command"])
 }
 
 func TestLoadFixtureDir_EmptyDir(t *testing.T) {
 	require.Nil(t, loadFixtureDir(""))
 	require.Nil(t, loadFixtureDir("/nonexistent/path"))
 	require.Nil(t, loadFixtureDir(t.TempDir())) // empty dir
-}
-
-func TestConvertMCPServers_SkipsNonMapEntries(t *testing.T) {
-	result := convertMCPServers(map[string]any{
-		"good":  map[string]any{"type": "stdio"},
-		"bad":   "not-a-map",
-		"good2": map[string]any{"type": "sse"},
-	}, nil, "")
-	require.Len(t, result, 2)
-	require.Contains(t, result, "good")
-	require.Contains(t, result, "good2")
 }
 
 func TestEvalRunnerSetsCancelOnSkillInvocation(t *testing.T) {

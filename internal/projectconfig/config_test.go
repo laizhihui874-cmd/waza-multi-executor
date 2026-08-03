@@ -66,7 +66,7 @@ files:
   taskGlob: "tasks/*.waza-task.yaml"
   taskFileSuffix: ".waza-task.yaml"
 defaults:
-  engine: mock
+  engine: codex-cli
   model: gpt-4o
   judgeModel: claude-sonnet-4.6
   timeout: 600
@@ -107,7 +107,7 @@ graders:
 	assertEqual(t, "Files.EvalFile", "waza-eval.yaml", cfg.Files.EvalFile)
 	assertEqual(t, "Files.TaskGlob", "tasks/*.waza-task.yaml", cfg.Files.TaskGlob)
 	assertEqual(t, "Files.TaskFileSuffix", ".waza-task.yaml", cfg.Files.TaskFileSuffix)
-	assertEqual(t, "Defaults.Engine", "mock", cfg.Defaults.Engine)
+	assertEqual(t, "Defaults.Engine", "codex-cli", cfg.Defaults.Engine)
 	assertEqual(t, "Defaults.Model", "gpt-4o", cfg.Defaults.Model)
 	assertEqual(t, "Defaults.JudgeModel", "claude-sonnet-4.6", cfg.Defaults.JudgeModel)
 	assertEqualInt(t, "Defaults.Timeout", 600, cfg.Defaults.Timeout)
@@ -140,7 +140,7 @@ func TestLoad_PartialConfig_LegacyTwoField(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, ".waza.yaml", `
 defaults:
-  engine: mock
+  engine: claude-cli
   model: gpt-4o-mini
 `)
 
@@ -150,7 +150,7 @@ defaults:
 	}
 
 	// Overridden
-	assertEqual(t, "Defaults.Engine", "mock", cfg.Defaults.Engine)
+	assertEqual(t, "Defaults.Engine", "claude-cli", cfg.Defaults.Engine)
 	assertEqual(t, "Defaults.Model", "gpt-4o-mini", cfg.Defaults.Model)
 
 	// Defaults preserved
@@ -198,7 +198,7 @@ func TestLoad_UnknownFields_ReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, ".waza.yaml", `
 defaults:
-  engine: mock
+  engine: codex-cli
   unknownField: should cause error
 `)
 	_, err := Load(dir)
@@ -251,7 +251,7 @@ func TestLoad_WalksUpDirectories(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, ".waza.yaml", `
 defaults:
-  engine: found-it
+  engine: hermes-cli
 `)
 
 	child := filepath.Join(root, "a", "b", "c")
@@ -266,7 +266,7 @@ defaults:
 
 	assertEqual(t, "Dir", root, cfg.Dir)
 
-	assertEqual(t, "Defaults.Engine", "found-it", cfg.Defaults.Engine)
+	assertEqual(t, "Defaults.Engine", "hermes-cli", cfg.Defaults.Engine)
 	// Other defaults still populated
 	assertEqual(t, "Defaults.Model", "claude-sonnet-4.6", cfg.Defaults.Model)
 }
@@ -276,7 +276,7 @@ func TestBoolPointerFields(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, dir, ".waza.yaml", `
 defaults:
-  engine: mock
+  engine: generic-cli
 `)
 		cfg, err := Load(dir)
 		if err != nil {
@@ -323,6 +323,19 @@ cache:
 		assertBoolPtr(t, "Defaults.SessionLog", true, cfg.Defaults.SessionLog)
 		assertBoolPtr(t, "Cache.Enabled", true, cfg.Cache.Enabled)
 	})
+}
+
+func TestLoad_RejectsUnknownExecutor(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".waza.yaml", `
+defaults:
+  engine: mock
+`)
+
+	_, err := Load(dir)
+	if err == nil || !strings.Contains(err.Error(), "defaults.engine") {
+		t.Fatalf("Load() error = %v, want unsupported executor error", err)
+	}
 }
 
 // ========================================

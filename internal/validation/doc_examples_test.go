@@ -17,7 +17,7 @@ config:
   trials_per_task: 1
   timeout_seconds: 300
   parallel: false
-  executor: mock
+  executor: codex-cli
   model: claude-sonnet-4.6
 
 metrics:
@@ -52,7 +52,7 @@ config:
   workers: 0
   model: claude-sonnet-4.6
   judge_model: gpt-4o
-  executor: mock
+  executor: codex-cli
 metrics:
   - name: accuracy
     weight: 1.0
@@ -68,7 +68,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 300
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
 metrics:
   - name: accuracy
@@ -104,7 +104,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 300
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
 metrics:
   - name: accuracy
@@ -123,7 +123,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 300
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
 metrics:
   - name: accuracy
@@ -146,7 +146,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 300
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
 metrics:
   - name: accuracy
@@ -171,7 +171,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 300
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
 metrics:
   - name: accuracy
@@ -199,7 +199,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 300
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
 metrics:
   - name: accuracy
@@ -220,7 +220,7 @@ tasks_from: shared-tasks.yaml
 config:
   trials_per_task: 3
   timeout_seconds: 300
-  executor: mock
+  executor: codex-cli
   model: claude-sonnet-4.6
 metrics:
   - name: accuracy

@@ -324,7 +324,10 @@ func initCommandE(cmd *cobra.Command, args []string, noSkill bool, flagSkillsDir
 						Description("Choose how evals are executed").
 						Options(
 							huh.NewOption("Copilot SDK — real model execution", "copilot-sdk"),
-							huh.NewOption("Mock — fast iteration, no API calls", "mock"),
+							huh.NewOption("Codex CLI — local Codex execution", "codex-cli"),
+							huh.NewOption("Claude CLI — local Claude execution", "claude-cli"),
+							huh.NewOption("Hermes CLI — local Hermes execution", "hermes-cli"),
+							huh.NewOption("Generic CLI — configure command in eval.yaml", "generic-cli"),
 						).
 						Value(&engine),
 				),
@@ -334,8 +337,9 @@ func initCommandE(cmd *cobra.Command, args []string, noSkill bool, flagSkillsDir
 				engine = projectconfig.DefaultEngine
 			}
 
-			// Model selector (hidden when engine ≠ copilot-sdk)
-			if engine == "copilot-sdk" {
+			// Generic executors own their model selection. Built-in executors can
+			// receive the model through their native command-line option.
+			if engine != "generic-cli" {
 				modelForm := huh.NewForm(
 					huh.NewGroup(
 						huh.NewSelect[string]().

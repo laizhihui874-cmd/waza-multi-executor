@@ -59,7 +59,7 @@
         "engine": {
           "type": "string",
           "description": "Execution engine for evaluations.",
-          "enum": ["copilot-sdk", "mock"],
+          "enum": ["copilot-sdk", "codex-cli", "claude-cli", "hermes-cli", "generic-cli"],
           "default": "copilot-sdk"
         },
         "model": {

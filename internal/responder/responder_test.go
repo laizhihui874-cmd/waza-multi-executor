@@ -5,7 +5,6 @@ import (
 	"sync"
 	"testing"
 
-	copilot "github.com/github/copilot-sdk/go"
 	"github.com/microsoft/waza/internal/execution"
 	"github.com/microsoft/waza/internal/models"
 	"github.com/stretchr/testify/require"
@@ -17,7 +16,7 @@ func TestDecisionToolsRecordReply(t *testing.T) {
 	require.Len(t, tools, 3)
 
 	respond := findTool(t, tools, toolRespond)
-	_, err := respond.Handler(copilot.ToolInvocation{
+	_, err := respond.Handler(execution.ToolInvocation{
 		Arguments: map[string]any{"answer": "research-agent"},
 	})
 	require.NoError(t, err)
@@ -29,7 +28,7 @@ func TestDecisionToolsRecordReply(t *testing.T) {
 func TestDecisionToolsRecordStop(t *testing.T) {
 	d := &decisionRecorder{}
 	stop := findTool(t, d.tools(), toolStop)
-	_, err := stop.Handler(copilot.ToolInvocation{Arguments: map[string]any{}})
+	_, err := stop.Handler(execution.ToolInvocation{Arguments: map[string]any{}})
 	require.NoError(t, err)
 	require.True(t, d.set)
 	require.Equal(t, DecisionStop, d.decision.Kind)
@@ -38,7 +37,7 @@ func TestDecisionToolsRecordStop(t *testing.T) {
 func TestDecisionToolsRecordAbstain(t *testing.T) {
 	d := &decisionRecorder{}
 	abstain := findTool(t, d.tools(), toolAbstain)
-	_, err := abstain.Handler(copilot.ToolInvocation{
+	_, err := abstain.Handler(execution.ToolInvocation{
 		Arguments: map[string]any{"reason": "brief too vague"},
 	})
 	require.NoError(t, err)
@@ -60,7 +59,7 @@ func (f *fakeExecutor) Execute(_ context.Context, req *execution.ExecutionReques
 func TestClassifyReply(t *testing.T) {
 	exec := &fakeExecutor{
 		respond: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
-			_, err := findTool(t, req.Tools, toolRespond).Handler(copilot.ToolInvocation{
+			_, err := findTool(t, req.Tools, toolRespond).Handler(execution.ToolInvocation{
 				Arguments: map[string]any{"answer": "research-agent"},
 			})
 			require.NoError(t, err)
@@ -77,7 +76,7 @@ func TestClassifyReply(t *testing.T) {
 func TestClassifyAbstain(t *testing.T) {
 	exec := &fakeExecutor{
 		respond: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
-			_, _ = findTool(t, req.Tools, toolAbstain).Handler(copilot.ToolInvocation{
+			_, _ = findTool(t, req.Tools, toolAbstain).Handler(execution.ToolInvocation{
 				Arguments: map[string]any{"reason": "no info"},
 			})
 			return &execution.ExecutionResponse{SessionID: "resp-1"}, nil
@@ -105,7 +104,7 @@ func TestClassifyUsesDefaultModelWhenUnset(t *testing.T) {
 	exec := &fakeExecutor{
 		respond: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
 			require.Equal(t, "default-model", req.ModelID)
-			_, _ = findTool(t, req.Tools, toolStop).Handler(copilot.ToolInvocation{Arguments: map[string]any{}})
+			_, _ = findTool(t, req.Tools, toolStop).Handler(execution.ToolInvocation{Arguments: map[string]any{}})
 			return &execution.ExecutionResponse{SessionID: "resp-1"}, nil
 		},
 	}
@@ -117,7 +116,7 @@ func TestClassifyUsesDefaultModelWhenUnset(t *testing.T) {
 func TestClassifyPersistsSession(t *testing.T) {
 	exec := &fakeExecutor{
 		respond: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
-			_, _ = findTool(t, req.Tools, toolRespond).Handler(copilot.ToolInvocation{
+			_, _ = findTool(t, req.Tools, toolRespond).Handler(execution.ToolInvocation{
 				Arguments: map[string]any{"answer": "a"},
 			})
 			return &execution.ExecutionResponse{SessionID: "resp-1"}, nil
@@ -141,7 +140,7 @@ func TestClassifyPersistsSession(t *testing.T) {
 func TestClassifyUsesPersistentSession(t *testing.T) {
 	exec := &fakeExecutor{
 		respond: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
-			_, _ = findTool(t, req.Tools, toolStop).Handler(copilot.ToolInvocation{Arguments: map[string]any{}})
+			_, _ = findTool(t, req.Tools, toolStop).Handler(execution.ToolInvocation{Arguments: map[string]any{}})
 			return &execution.ExecutionResponse{SessionID: "resp-1"}, nil
 		},
 	}
@@ -168,7 +167,7 @@ func (d *deletingExecutor) DeleteSession(_ context.Context, sessionID string) er
 func TestCloseDeletesSession(t *testing.T) {
 	exec := &deletingExecutor{}
 	exec.respond = func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
-		_, _ = findTool(t, req.Tools, toolStop).Handler(copilot.ToolInvocation{Arguments: map[string]any{}})
+		_, _ = findTool(t, req.Tools, toolStop).Handler(execution.ToolInvocation{Arguments: map[string]any{}})
 		return &execution.ExecutionResponse{SessionID: "resp-1"}, nil
 	}
 	c := New(exec, models.ResponderConfig{Instructions: "x", MaxFollowups: 5}, "gpt-4o")
@@ -193,7 +192,7 @@ func TestCloseWithoutSessionIsNoop(t *testing.T) {
 func TestCloseWithoutDeleterIsNoop(t *testing.T) {
 	exec := &fakeExecutor{
 		respond: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
-			_, _ = findTool(t, req.Tools, toolStop).Handler(copilot.ToolInvocation{Arguments: map[string]any{}})
+			_, _ = findTool(t, req.Tools, toolStop).Handler(execution.ToolInvocation{Arguments: map[string]any{}})
 			return &execution.ExecutionResponse{SessionID: "resp-1"}, nil
 		},
 	}
@@ -209,14 +208,14 @@ func TestDecisionToolsRejectDuplicateCall(t *testing.T) {
 	respond := findTool(t, tools, toolRespond)
 	stop := findTool(t, tools, toolStop)
 
-	_, err := respond.Handler(copilot.ToolInvocation{
+	_, err := respond.Handler(execution.ToolInvocation{
 		Arguments: map[string]any{"answer": "first"},
 	})
 	require.NoError(t, err)
 
 	// A second decision call must be rejected rather than silently
 	// overwriting the first decision.
-	_, err = stop.Handler(copilot.ToolInvocation{Arguments: map[string]any{}})
+	_, err = stop.Handler(execution.ToolInvocation{Arguments: map[string]any{}})
 	require.Error(t, err)
 	require.Error(t, d.err)
 	// The first decision is preserved so callers can see what was recorded.
@@ -236,10 +235,10 @@ func TestDecisionToolsConcurrentCallsRecordOne(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for _, call := range []func(){
-		func() { respond.Handler(copilot.ToolInvocation{Arguments: map[string]any{"answer": "a"}}) }, //nolint:errcheck
-		func() { stop.Handler(copilot.ToolInvocation{Arguments: map[string]any{}}) },                 //nolint:errcheck
+		func() { respond.Handler(execution.ToolInvocation{Arguments: map[string]any{"answer": "a"}}) }, //nolint:errcheck
+		func() { stop.Handler(execution.ToolInvocation{Arguments: map[string]any{}}) },                 //nolint:errcheck
 		func() {
-			abstain.Handler(copilot.ToolInvocation{Arguments: map[string]any{"reason": "r"}}) //nolint:errcheck
+			abstain.Handler(execution.ToolInvocation{Arguments: map[string]any{"reason": "r"}}) //nolint:errcheck
 		},
 	} {
 		wg.Add(1)
@@ -261,7 +260,7 @@ func TestDecisionToolsRejectMalformedArgs(t *testing.T) {
 
 	// answer must be a string; passing a non-string triggers a decode error
 	// that the handler surfaces instead of recording an empty reply.
-	_, err := respond.Handler(copilot.ToolInvocation{
+	_, err := respond.Handler(execution.ToolInvocation{
 		Arguments: map[string]any{"answer": map[string]any{"nested": true}},
 	})
 	require.Error(t, err)
@@ -280,7 +279,7 @@ func TestDecisionToolsRejectEmptyReply(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			d := &decisionRecorder{}
 			respond := findTool(t, d.tools(), toolRespond)
-			_, err := respond.Handler(copilot.ToolInvocation{Arguments: tc.args})
+			_, err := respond.Handler(execution.ToolInvocation{Arguments: tc.args})
 			require.Error(t, err)
 			require.Error(t, d.err)
 			require.False(t, d.set)
@@ -299,7 +298,7 @@ func TestDecisionToolsRejectEmptyAbstainReason(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			d := &decisionRecorder{}
 			abstain := findTool(t, d.tools(), toolAbstain)
-			_, err := abstain.Handler(copilot.ToolInvocation{Arguments: tc.args})
+			_, err := abstain.Handler(execution.ToolInvocation{Arguments: tc.args})
 			require.Error(t, err)
 			require.Error(t, d.err)
 			require.False(t, d.set)
@@ -311,10 +310,10 @@ func TestClassifyDuplicateDecisionIsError(t *testing.T) {
 	exec := &fakeExecutor{
 		respond: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
 			// The model calls reply first, then stop in the same turn.
-			_, _ = findTool(t, req.Tools, toolRespond).Handler(copilot.ToolInvocation{
+			_, _ = findTool(t, req.Tools, toolRespond).Handler(execution.ToolInvocation{
 				Arguments: map[string]any{"answer": "a"},
 			})
-			_, _ = findTool(t, req.Tools, toolStop).Handler(copilot.ToolInvocation{Arguments: map[string]any{}})
+			_, _ = findTool(t, req.Tools, toolStop).Handler(execution.ToolInvocation{Arguments: map[string]any{}})
 			return &execution.ExecutionResponse{SessionID: "resp-1"}, nil
 		},
 	}
@@ -327,7 +326,7 @@ func TestClassifyDuplicateDecisionIsError(t *testing.T) {
 func TestClassifyMalformedArgsIsError(t *testing.T) {
 	exec := &fakeExecutor{
 		respond: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
-			_, _ = findTool(t, req.Tools, toolRespond).Handler(copilot.ToolInvocation{
+			_, _ = findTool(t, req.Tools, toolRespond).Handler(execution.ToolInvocation{
 				Arguments: map[string]any{"answer": 42},
 			})
 			return &execution.ExecutionResponse{SessionID: "resp-1"}, nil
@@ -339,7 +338,7 @@ func TestClassifyMalformedArgsIsError(t *testing.T) {
 	require.Contains(t, err.Error(), "responder tool call invalid")
 }
 
-func findTool(t *testing.T, tools []copilot.Tool, name string) copilot.Tool {
+func findTool(t *testing.T, tools []execution.Tool, name string) execution.Tool {
 	t.Helper()
 	for _, tl := range tools {
 		if tl.Name == name {
@@ -347,5 +346,5 @@ func findTool(t *testing.T, tools []copilot.Tool, name string) copilot.Tool {
 		}
 	}
 	t.Fatalf("tool %q not found", name)
-	return copilot.Tool{}
+	return execution.Tool{}
 }

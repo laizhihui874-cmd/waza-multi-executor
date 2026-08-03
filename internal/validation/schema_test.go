@@ -3,6 +3,7 @@ package validation
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 60
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
 metrics:
   - name: accuracy
@@ -63,7 +64,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 60
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
   instruction_files:
     - .github/instructions/project.instructions.md
@@ -85,7 +86,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 60
-  executor: mock
+  executor: codex-cli
   model: gpt-4o
   inject_skill_body: false
 metrics:
@@ -106,6 +107,33 @@ func TestValidateEvalBytes_Invalid(t *testing.T) {
 	joined := joinErrs(errs)
 	require.Contains(t, joined, "executor")
 	require.Contains(t, joined, "threshold")
+}
+
+func TestValidateEvalBytes_ProductExecutors(t *testing.T) {
+	for _, executor := range []string{"copilot-sdk", "codex-cli", "claude-cli", "hermes-cli", "generic-cli"} {
+		t.Run(executor, func(t *testing.T) {
+			yamlText := strings.Replace(validEvalYAML, "executor: codex-cli", "executor: "+executor, 1)
+			if executor == "generic-cli" {
+				yamlText = strings.Replace(yamlText, "  model: gpt-4o", "  model: gpt-4o\n  executor_config:\n    command: my-agent", 1)
+			}
+			yaml := []byte(yamlText)
+			require.Empty(t, ValidateEvalBytes(yaml))
+		})
+	}
+}
+
+func TestValidateEvalBytes_GenericCLIRequiresCommand(t *testing.T) {
+	yaml := []byte(strings.Replace(validEvalYAML, "executor: codex-cli", "executor: generic-cli", 1))
+	errs := ValidateEvalBytes(yaml)
+	require.NotEmpty(t, errs)
+	require.Contains(t, joinErrs(errs), "executor_config")
+}
+
+func TestValidateEvalBytes_MockExecutorIsNotProductConfig(t *testing.T) {
+	yaml := []byte(strings.Replace(validEvalYAML, "executor: codex-cli", "executor: mock", 1))
+	errs := ValidateEvalBytes(yaml)
+	require.NotEmpty(t, errs)
+	require.Contains(t, joinErrs(errs), "executor")
 }
 
 func TestValidateTaskBytes_Valid(t *testing.T) {

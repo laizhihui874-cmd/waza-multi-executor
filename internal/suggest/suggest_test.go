@@ -200,7 +200,7 @@ func TestGenerateSurfacesImplementationEngineError(t *testing.T) {
 }
 
 func TestParseResponseStructuredYAML(t *testing.T) {
-	resp := "```yaml\neval_yaml: |\n  name: generated-eval\n  description: generated\n  skill: sample\n  version: \"1.0\"\n  config:\n    trials_per_task: 1\n    timeout_seconds: 120\n    parallel: false\n    executor: mock\n    model: test\n  graders:\n    - type: code\n      name: has_output\n      config:\n        assertions:\n          - \\\"len(output) > 0\\\"\n  metrics:\n    - name: completion\n      weight: 1.0\n      threshold: 0.8\n  tasks:\n    - \"tasks/*.yaml\"\ntasks:\n  - path: tasks/basic.yaml\n    content: |\n      id: basic-001\n      name: Basic\n      inputs:\n        prompt: \"hello\"\nfixtures:\n  - path: fixtures/sample.txt\n    content: |\n      sample\n```"
+	resp := "```yaml\neval_yaml: |\n  name: generated-eval\n  description: generated\n  skill: sample\n  version: \"1.0\"\n  config:\n    trials_per_task: 1\n    timeout_seconds: 120\n    parallel: false\n    executor: codex-cli\n    model: test\n  graders:\n    - type: code\n      name: has_output\n      config:\n        assertions:\n          - \\\"len(output) > 0\\\"\n  metrics:\n    - name: completion\n      weight: 1.0\n      threshold: 0.8\n  tasks:\n    - \"tasks/*.yaml\"\ntasks:\n  - path: tasks/basic.yaml\n    content: |\n      id: basic-001\n      name: Basic\n      inputs:\n        prompt: \"hello\"\nfixtures:\n  - path: fixtures/sample.txt\n    content: |\n      sample\n```"
 
 	s, err := ParseResponse(resp)
 	require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestParseResponseRejectsBareStringGraders(t *testing.T) {
     trials_per_task: 1
     timeout_seconds: 120
     parallel: false
-    executor: mock
+    executor: codex-cli
     model: test
   graders:
     - some_custom_grader
@@ -293,7 +293,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 120
-  executor: mock
+  executor: codex-cli
   model: test
 graders:
   - type: code
@@ -320,7 +320,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 120
-  executor: mock
+  executor: codex-cli
   model: test
 graders:
   - name: orphan_grader
@@ -346,7 +346,7 @@ config:
   trials_per_task: 1
   timeout_seconds: 120
   parallel: false
-  executor: mock
+  executor: codex-cli
   model: test
 graders:
   - type: code
@@ -390,7 +390,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 120
-  executor: mock
+  executor: codex-cli
   model: test
   unknown_field: should cause error
 `
@@ -408,7 +408,7 @@ unknown_field: should cause error
 config:
   trials_per_task: 1
   timeout_seconds: 120
-  executor: mock
+  executor: codex-cli
   model: test
 `
 	err := validateEvalYAML(invalidEvalYAML)

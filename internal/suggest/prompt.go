@@ -14,7 +14,7 @@ const evalYAMLSchemaSummary = `Top-level eval.yaml fields:
   - trials_per_task (int >= 1)
   - timeout_seconds (int >= 1)
   - parallel (bool)
-  - executor (mock|copilot-sdk)
+  - executor (copilot-sdk|codex-cli|claude-cli|hermes-cli|generic-cli)
   - model (string)
 - graders[]: Each entry MUST be an object with "type" and "name" fields (never a bare string).
   - type (code|prompt|text|file|json_schema|program|behavior|action_sequence|skill_invocation|diff|tool_constraint)

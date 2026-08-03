@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	copilot "github.com/github/copilot-sdk/go"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/microsoft/waza/internal/execution"
 	"github.com/microsoft/waza/internal/models"
@@ -66,8 +65,8 @@ type decisionRecorder struct {
 	err      error
 }
 
-func (d *decisionRecorder) tools() []copilot.Tool {
-	return []copilot.Tool{
+func (d *decisionRecorder) tools() []execution.Tool {
+	return []execution.Tool{
 		{
 			Name:        toolRespond,
 			Description: "Answer the agent's question as the user. Call this exactly once with your answer.",
@@ -81,17 +80,17 @@ func (d *decisionRecorder) tools() []copilot.Tool {
 				},
 				"required": []string{"answer"},
 			},
-			Handler: func(inv copilot.ToolInvocation) (copilot.ToolResult, error) {
+			Handler: func(inv execution.ToolInvocation) (execution.ToolResult, error) {
 				var args struct {
 					Answer string `mapstructure:"answer"`
 				}
 				if err := mapstructure.Decode(inv.Arguments, &args); err != nil {
-					return copilot.ToolResult{}, d.fail(fmt.Errorf("decode %s arguments: %w", toolRespond, err))
+					return execution.ToolResult{}, d.fail(fmt.Errorf("decode %s arguments: %w", toolRespond, err))
 				}
 				if strings.TrimSpace(args.Answer) == "" {
-					return copilot.ToolResult{}, d.fail(fmt.Errorf("%s called with empty answer", toolRespond))
+					return execution.ToolResult{}, d.fail(fmt.Errorf("%s called with empty answer", toolRespond))
 				}
-				return copilot.ToolResult{}, d.record(toolRespond, Decision{Kind: DecisionReply, Answer: args.Answer})
+				return execution.ToolResult{}, d.record(toolRespond, Decision{Kind: DecisionReply, Answer: args.Answer})
 			},
 		},
 		{
@@ -101,8 +100,8 @@ func (d *decisionRecorder) tools() []copilot.Tool {
 				"type":       "object",
 				"properties": map[string]any{},
 			},
-			Handler: func(copilot.ToolInvocation) (copilot.ToolResult, error) {
-				return copilot.ToolResult{}, d.record(toolStop, Decision{Kind: DecisionStop})
+			Handler: func(execution.ToolInvocation) (execution.ToolResult, error) {
+				return execution.ToolResult{}, d.record(toolStop, Decision{Kind: DecisionStop})
 			},
 		},
 		{
@@ -118,17 +117,17 @@ func (d *decisionRecorder) tools() []copilot.Tool {
 				},
 				"required": []string{"reason"},
 			},
-			Handler: func(inv copilot.ToolInvocation) (copilot.ToolResult, error) {
+			Handler: func(inv execution.ToolInvocation) (execution.ToolResult, error) {
 				var args struct {
 					Reason string `mapstructure:"reason"`
 				}
 				if err := mapstructure.Decode(inv.Arguments, &args); err != nil {
-					return copilot.ToolResult{}, d.fail(fmt.Errorf("decode %s arguments: %w", toolAbstain, err))
+					return execution.ToolResult{}, d.fail(fmt.Errorf("decode %s arguments: %w", toolAbstain, err))
 				}
 				if strings.TrimSpace(args.Reason) == "" {
-					return copilot.ToolResult{}, d.fail(fmt.Errorf("%s called with empty reason", toolAbstain))
+					return execution.ToolResult{}, d.fail(fmt.Errorf("%s called with empty reason", toolAbstain))
 				}
-				return copilot.ToolResult{}, d.record(toolAbstain, Decision{Kind: DecisionAbstain, Reason: args.Reason})
+				return execution.ToolResult{}, d.record(toolAbstain, Decision{Kind: DecisionAbstain, Reason: args.Reason})
 			},
 		},
 	}

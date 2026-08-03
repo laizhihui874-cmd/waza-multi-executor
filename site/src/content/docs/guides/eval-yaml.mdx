@@ -22,7 +22,7 @@ config:
   trials_per_task: 1
   timeout_seconds: 300
   parallel: false
-  executor: mock
+  executor: codex-cli
   model: claude-sonnet-4.6
 
 metrics:
@@ -104,8 +104,10 @@ config:
   workers: 0 # Auto-size parallel workers if parallel: true
   model: claude-sonnet-4.6 # Default model (override with --model)
   judge_model: gpt-4o # Model for LLM-as-judge graders (optional)
-  executor: mock # mock (local) or copilot-sdk (real API)
-  inject_skill_body: true # Inject target SKILL.md/.agent.md body into the prompt
+  executor: codex-cli
+  executor_config:
+    command: codex
+    args: []
   instruction_files:
     - .github/instructions/project.instructions.md
 ```
@@ -119,13 +121,14 @@ config:
 | `workers`           | int       | 0                 | Number of parallel workers; 0 auto-sizes                    |
 | `model`             | string    | _required_        | Default model for tasks (override with `--model` flag)      |
 | `judge_model`       | string    | (same as `model`) | Model for `prompt`-type graders (LLM-as-judge)              |
-| `executor`          | string    | `copilot-sdk`     | Executor: `mock` (local, echoes task metadata and file content) or `copilot-sdk` (real API)  |
+| `executor`          | string    | `copilot-sdk`     | One of `copilot-sdk`, `codex-cli`, `claude-cli`, `hermes-cli`, or `generic-cli` |
+| `executor_config`   | object    | —                 | Direct subprocess command, argv, output protocol, and environment allowlist |
 | `max_attempts`      | int       | 0                 | Maximum retry attempts per task on failure (0 = no retries) |
 | `group_by`          | string    | —                 | Group results by a field (e.g., `tags`, `task_id`)          |
 | `fail_fast`         | bool      | false             | Stop the entire run on first task failure                   |
 | `skill_directories` | list[str] | `[]`              | Additional directories to search for skills                 |
 | `instruction_files` | list[str] | `[]`              | Instruction files to apply to every task                    |
-| `inject_skill_body` | bool      | true              | Inject the target `SKILL.md` or `.agent.md` body into the system prompt |
+| `inject_skill_body` | bool      | true              | Copilot compatibility option; CLI executors use native discovery and ignore it |
 | `disabled_skills`   | list[str] | `[]`              | Skills to disable. Use `["*"]` to disable all skills        |
 | `required_skills`   | list[str] | `[]`              | Skills that must be available before running                |
 | `mcp_servers`       | object    | —                 | MCP server configurations for the evaluation. When `tools` is omitted or null for a server, Waza exposes all server tools by sending `["*"]` to the Copilot SDK. Set `tools` to an explicit list, including `[]`, to restrict or disable exposed tools. |

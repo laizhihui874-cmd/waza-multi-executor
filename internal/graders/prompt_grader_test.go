@@ -95,7 +95,7 @@ func TestPromptGraderUsesExecutorTools(t *testing.T) {
 			require.True(t, req.SkipWorkspaceCapture)
 			require.True(t, req.NoSkills)
 			require.Len(t, req.Tools, 2)
-			_, err := req.Tools[0].Handler(copilot.ToolInvocation{
+			_, err := req.Tools[0].Handler(execution.ToolInvocation{
 				Arguments: map[string]any{"description": "criterion", "reason": "ok"},
 			})
 			require.NoError(t, err)
@@ -123,7 +123,7 @@ func TestPromptGraderUsesExecutorTools(t *testing.T) {
 func TestPromptGraderKeepsGradesWhenExecutorReportsPostGradeError(t *testing.T) {
 	executor := &fakePromptExecutor{
 		execute: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
-			_, err := req.Tools[0].Handler(copilot.ToolInvocation{
+			_, err := req.Tools[0].Handler(execution.ToolInvocation{
 				Arguments: map[string]any{"description": "criterion", "reason": "ok"},
 			})
 			require.NoError(t, err)
@@ -146,7 +146,7 @@ func TestPromptGraderContinueSessionPassesSessionID(t *testing.T) {
 	executor := &fakePromptExecutor{
 		execute: func(req *execution.ExecutionRequest) (*execution.ExecutionResponse, error) {
 			require.Equal(t, "session-123", req.SessionID)
-			_, err := req.Tools[0].Handler(copilot.ToolInvocation{
+			_, err := req.Tools[0].Handler(execution.ToolInvocation{
 				Arguments: map[string]any{"description": "criterion", "reason": "ok"},
 			})
 			require.NoError(t, err)
@@ -416,7 +416,7 @@ func TestPairwiseMode_UsesExecutorTool(t *testing.T) {
 		require.True(t, req.Streaming)
 		require.True(t, req.EphemeralSession)
 		require.Len(t, req.Tools, 1)
-		_, err := req.Tools[0].Handler(copilot.ToolInvocation{
+		_, err := req.Tools[0].Handler(execution.ToolInvocation{
 			Arguments: map[string]any{
 				"winner":    winner,
 				"magnitude": "much-better",

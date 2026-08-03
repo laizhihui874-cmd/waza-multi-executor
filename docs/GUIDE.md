@@ -296,6 +296,8 @@ EOF
 
 Record a prompt execution and generate a reusable task YAML from the observed run.
 
+This auxiliary command always records through the Copilot SDK; it does not use the executor configured in `eval.yaml`.
+
 The generated task includes inferred validators based on:
 - Assistant response content
 - Tool usage sequence

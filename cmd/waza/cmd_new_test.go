@@ -514,7 +514,7 @@ func TestNewCommand_WazaYAMLDefaults(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "skills"), 0o755))
 
 	// Write .waza.yaml with custom defaults
-	wazaConfig := "defaults:\n  engine: mock\n  model: claude-sonnet\n"
+	wazaConfig := "defaults:\n  engine: claude-cli\n  model: claude-sonnet\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".waza.yaml"), []byte(wazaConfig), 0o644))
 
 	origDir, err := os.Getwd()
@@ -532,7 +532,7 @@ func TestNewCommand_WazaYAMLDefaults(t *testing.T) {
 	content := string(data)
 
 	// Verify .waza.yaml defaults were applied
-	assert.Contains(t, content, "executor: mock")
+	assert.Contains(t, content, "executor: claude-cli")
 	assert.Contains(t, content, "model: claude-sonnet")
 }
 

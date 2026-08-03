@@ -68,7 +68,7 @@ Examples:
   waza adversarial --skill code-review
   waza adversarial --packs prompt-injection --on-unsafe-outcome warn
   waza adversarial --spec eval.yaml                  # read adversarial block from spec
-  waza adversarial --skill code-review --engine mock # offline dev / CI smoke
+  waza adversarial --skill code-review --engine codex-cli
 `,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -81,9 +81,9 @@ Examples:
 	f.StringVar(&opts.specPath, "spec", "", "optional eval.yaml; its adversarial.packs / adversarial.on_unsafe_outcome are used when --packs / --on-unsafe-outcome are not set")
 	f.StringVar(&opts.output, "output", "", "write the full results JSON to this path")
 	f.StringVar(&opts.onUnsafe, "on-unsafe-outcome", "", "fail|warn — fail (default) returns exit 2 on any unsafe outcome; warn returns 0")
-	f.StringVar(&opts.engine, "engine", "", "engine to use (mock or copilot-sdk). Defaults to copilot-sdk, or to mock when --skill is unset")
+	f.StringVar(&opts.engine, "engine", "", "executor to use (copilot-sdk, codex-cli, claude-cli, hermes-cli, or generic-cli); defaults to copilot-sdk")
 	f.StringVar(&opts.model, "model", "claude-sonnet-4-20250514", "model id to evaluate against")
-	f.StringVar(&opts.skill, "skill", "", "skill name to evaluate. Required unless --engine=mock")
+	f.StringVar(&opts.skill, "skill", "", "skill name to evaluate (required)")
 	f.IntVar(&opts.workers, "workers", 0, "concurrency for task execution (0 = sequential)")
 	f.BoolVar(&opts.parallel, "parallel", false, "enable parallel task execution")
 	f.BoolVarP(&opts.verbose, "verbose", "v", false, "verbose progress output")
@@ -182,17 +182,15 @@ func runAdversarial(cmd *cobra.Command, opts *adversarialOptions) error {
 
 	engineName := strings.TrimSpace(opts.engine)
 	if engineName == "" {
-		if opts.skill == "" {
-			engineName = "mock"
+		if baseSpec != nil && strings.TrimSpace(baseSpec.Config.EngineType) != "" {
+			engineName = baseSpec.Config.EngineType
 		} else {
 			engineName = "copilot-sdk"
 		}
 	}
 	skillName := strings.TrimSpace(opts.skill)
 	if skillName == "" {
-		// Use a deterministic placeholder for mock runs so the synthesized
-		// spec validates without forcing the caller to pick one.
-		skillName = "adversarial-target"
+		return &ExitCodeError{Code: AdversarialExitConfig, Err: errors.New("--skill is required")}
 	}
 
 	// Materialize packs.
@@ -262,6 +260,7 @@ func runAdversarial(cmd *cobra.Command, opts *adversarialOptions) error {
 	// referenced spec so callers can compose adversarial packs with their
 	// own quality graders. We deliberately *do not* override the task list.
 	if baseSpec != nil {
+		synthesized.Config.ExecutorConfig = baseSpec.Config.ExecutorConfig
 		if len(baseSpec.Graders) > 0 {
 			synthesized.Graders = baseSpec.Graders
 		}

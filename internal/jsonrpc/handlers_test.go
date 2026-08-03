@@ -57,7 +57,7 @@ func TestHandler_EvalList_Success(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -91,7 +91,7 @@ skill: my-skill
 config:
   trials_per_task: 2
   timeout_seconds: 60
-  executor: mock
+  executor: codex-cli
   model: gpt-4
 graders:
   - type: code
@@ -115,7 +115,7 @@ tasks:
 	require.NoError(t, json.Unmarshal(data, &result))
 	assert.Equal(t, "my-eval", result.Name)
 	assert.Equal(t, "my-skill", result.SkillName)
-	assert.Equal(t, "mock", result.Config.EngineType)
+	assert.Equal(t, "codex-cli", result.Config.EngineType)
 }
 
 func TestHandler_EvalValidate_Valid(t *testing.T) {
@@ -126,7 +126,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 metrics:
   - name: accuracy
@@ -179,7 +179,7 @@ func TestHandler_EvalRun_Success(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -212,7 +212,7 @@ func TestHandler_RunStatus(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -283,7 +283,7 @@ func TestHandler_CancelFuncCleanup(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -341,7 +341,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 metrics:
   - name: accuracy
@@ -384,7 +384,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 metrics:
   - name: accuracy
@@ -425,7 +425,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 metrics:
   - name: accuracy
@@ -471,7 +471,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 metrics:
   - name: accuracy
@@ -514,7 +514,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 metrics:
   - name: accuracy
@@ -565,7 +565,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 metrics:
   - name: accuracy

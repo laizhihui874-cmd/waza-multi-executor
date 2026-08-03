@@ -12,9 +12,7 @@ import (
 	"sync"
 	"time"
 
-	copilot "github.com/github/copilot-sdk/go"
 	"github.com/microsoft/waza/internal/config"
-	"github.com/microsoft/waza/internal/copilotconfig"
 	"github.com/microsoft/waza/internal/copilotevents"
 	"github.com/microsoft/waza/internal/execution"
 	"github.com/microsoft/waza/internal/models"
@@ -30,7 +28,7 @@ type Runner struct {
 	cfg       *config.EvalConfig
 	out       io.Writer
 	fixtures  []execution.ResourceFile // cached fixture files, loaded once
-	mcpConfig map[string]copilot.MCPServerConfig
+	mcpConfig map[string]any
 }
 
 type task struct {
@@ -51,7 +49,7 @@ type taskResult struct {
 func NewRunner(spec *TestSpec, engine execution.AgentEngine, cfg *config.EvalConfig, out io.Writer) *Runner {
 	r := &Runner{spec: spec, engine: engine, cfg: cfg, out: out}
 	r.fixtures = loadFixtureDir(cfg.FixtureDir())
-	r.mcpConfig = convertMCPServers(cfg.Spec().Config.ServerConfigs, cfg.Spec().MCPMocks, cfg.SpecDir())
+	r.mcpConfig = cfg.Spec().Config.ServerConfigs
 	return r
 }
 
@@ -184,6 +182,8 @@ func (r *Runner) testTrigger(ctx context.Context, prompt string) (*execution.Exe
 		SourceDir:               r.cfg.SpecDir(),
 		Resources:               r.fixtures,
 		MCPServers:              r.mcpConfig,
+		MCPMocks:                r.cfg.Spec().MCPMocks,
+		MCPBaseDir:              r.cfg.SpecDir(),
 		CancelOnSkillInvocation: true,
 	})
 }
@@ -246,12 +246,4 @@ func loadFixtureDir(dir string) []execution.ResourceFile {
 	})
 
 	return resources
-}
-
-// convertMCPServers converts the eval YAML mcp_servers config (map[string]any)
-// into the copilot SDK's MCPServerConfig type.
-func convertMCPServers(serverConfigs map[string]any, mocks []models.MCPMockConfig, baseDir string) map[string]copilot.MCPServerConfig {
-	return copilotconfig.ConvertMCPServersWithMocks(serverConfigs, mocks, baseDir, func(format string, args ...any) {
-		fmt.Fprintf(os.Stderr, format, args...)
-	})
 }

@@ -19,8 +19,8 @@ config:
   timeout_seconds: 300
   # Run tasks sequentially for deterministic results
   parallel: false
-  # Use mock executor for fast testing (switch to copilot-sdk for real tests)
-  executor: mock
+  # Trigger tests require native skill-invocation evidence from the Copilot SDK.
+  executor: copilot-sdk
   # Default model to use
   model: claude-sonnet-4-20250514
 

@@ -30,7 +30,7 @@ skill: test-skill
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -68,7 +68,7 @@ func TestHandler_TaskList_MultipleTasks(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -119,7 +119,7 @@ func TestHandler_TaskGet_Success(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -158,7 +158,7 @@ func TestHandler_TaskGet_NotFoundTask(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -192,7 +192,7 @@ func TestHandler_TaskGet_MissingTaskID(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"
@@ -227,7 +227,7 @@ func TestHandler_RunCancel_Success(t *testing.T) {
 config:
   trials_per_task: 1
   timeout_seconds: 30
-  executor: mock
+  executor: codex-cli
   model: test
 tasks:
   - "tasks/*.yaml"

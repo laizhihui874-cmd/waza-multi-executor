@@ -355,7 +355,7 @@ Good grader names help debug failures:
 Change executor in `eval.yaml`:
 ```yaml
 config:
-  executor: copilot-sdk  # Instead of mock
+  executor: copilot-sdk  # Required by tool/skill-event showcase tasks
 ```
 
 ### Adding Custom Tasks
@@ -402,9 +402,9 @@ waza run examples/grader-showcase/eval.yaml --filter="behavior|action"
 
 ## Notes
 
-- **Mock Executor**: Default config uses `mock` executor for fast testing
-  - Mock executor returns dummy responses
-  - Change to `copilot-sdk` for real agent testing
+- **Copilot SDK Executor**: Default config uses real tool and skill-invocation events
+  - Authenticate Copilot before running the example
+  - Core output and file graders can also be used with the CLI executors
   
 - **Not Implemented**: `prompt` grader is documented but not yet implemented
   - Will be available in a future release

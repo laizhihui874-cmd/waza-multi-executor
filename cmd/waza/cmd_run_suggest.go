@@ -69,10 +69,6 @@ func generateEvalAnalysis(
 		}
 	}
 
-	if spec.Config.EngineType != "copilot-sdk" {
-		return generateFakeSuggestionReport(spec, len(failingTests), len(failedTriggers)), nil
-	}
-
 	resources := loadSkillResources(resolvedSkillPaths)
 	prompt := buildRunAnalysisPrompt(spec, failingTests, failedTriggers, testDefinitions)
 	execCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
@@ -123,22 +119,6 @@ func summarizeSessionEventTypes(events []copilot.SessionEvent) []string {
 		lines = append(lines, fmt.Sprintf("event[%d]: %s", i+1, evt.Type()))
 	}
 	return lines
-}
-
-func generateFakeSuggestionReport(spec *models.EvalSpec, failedTests, failedTriggers int) string {
-	totalFailures := failedTests + failedTriggers
-	var b strings.Builder
-
-	fmt.Fprintf(&b, "_Deterministic mock suggestion report (engine: `%s`)._\n\n", spec.Config.EngineType)
-	fmt.Fprintf(&b, "1. Focus on resolving the %d failing case(s) from this run before broad skill changes.\n", totalFailures)
-	if failedTests > 0 {
-		fmt.Fprintf(&b, "2. Start with failing benchmark tasks (%d), aligning skill instructions to grader criteria and observed model/tool behavior.\n", failedTests)
-	}
-	if failedTriggers > 0 {
-		fmt.Fprintf(&b, "3. Fix trigger routing for the %d failed trigger prompt(s), ensuring expected invoke/do-not-invoke behavior is explicit in the skill.\n", failedTriggers)
-	}
-
-	return b.String()
 }
 
 func resolveSuggestionSkillPaths(spec *models.EvalSpec, specPath string) []string {

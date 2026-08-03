@@ -233,7 +233,7 @@ config:
   trials_per_task: 1
   timeout_seconds: 120
   parallel: false
-  executor: mock
+  executor: codex-cli
   model: test
 graders:
   - type: code

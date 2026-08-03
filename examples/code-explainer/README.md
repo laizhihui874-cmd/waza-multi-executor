@@ -32,9 +32,9 @@ waza generate examples/code-explainer/SKILL.md -o ./my-code-explainer-eval --ass
 ### 3. Run the Eval
 
 ```bash
-# Quick test with mock executor
+# Run with the Copilot SDK (this example includes trigger tests)
 waza run examples/code-explainer/eval.yaml \
-  --executor mock \
+  --executor copilot-sdk \
   --context-dir examples/code-explainer/fixtures \
   -v
 

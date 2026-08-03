@@ -32,7 +32,7 @@ waza run --help
 
 - **Location:** `examples/code-explainer/`
 - **Prerequisite:** waza binary built
-- **Model:** Uses mock executor (no API keys needed for demo)
+- **Model:** Uses the locally installed Codex CLI and its existing authentication
 
 ### Commands
 
@@ -72,7 +72,7 @@ cat results.json | jq '.summary'
 ### Talking Points
 
 1. **Single Binary:** "Everything you need is in one command. No Python venv, no package management."
-2. **Fast Iteration:** "Run evals in seconds with mock executor, then switch to real models."
+2. **Real Execution:** "Run the same eval through Copilot, Codex, Claude, Hermes, or a generic CLI adapter."
 3. **Reproducible:** "Same eval.yaml runs the same way everywhere—CI, local, your teammate's machine."
 4. **Structured Output:** "JSON results let you integrate with dashboards, reports, or CI/CD."
 
@@ -220,7 +220,7 @@ echo "🔄 Compare tokens between versions:"
 
 - **Location:** Any eval directory (e.g., `examples/code-explainer/`)
 - **Process:** Score → Review → Fix → Score again (iterative loop)
-- **Note:** Demo uses mock executor; in practice, use real models
+- **Note:** Demo results depend on the selected real executor and model
 
 ### Commands
 
@@ -453,40 +453,47 @@ echo "  and validates the full orchestration end-to-end."
 
 ---
 
-## Demo 7: Cross-Model Comparison Demo (3 min)
+## Demo 7: Cross-Executor Model Comparison Demo (3 min)
 
 **What it shows:** Running the same eval against multiple AI models and comparing results.
 
 ### Setup
 
-- **Models:** Claude Sonnet, GPT-4o, Claude Opus (or whichever you have API keys for)
+- **Executors:** Codex CLI, Claude CLI, and Hermes CLI (authenticated locally)
 - **Inputs:** Multiple result JSON files from separate runs
 - **Tool:** `waza compare`
 
 ### Commands
 
 ```bash
-# Run evaluation with different models (save results separately)
-echo "🤖 Running evals with multiple models..."
+# First replace SOURCE_REPO_PATH in the repo-resources task, then run the same
+# core-output evaluation through real local clients (save results separately)
+echo "🤖 Running evals with multiple executors..."
 
-# Run with Claude Sonnet (mocked for demo)
+# Run the configured eval through Codex CLI
 echo ""
-echo "Running with mock executor (represents Sonnet)..."
-./waza-bin run examples/code-explainer/eval.yaml \
-  --context-dir examples/code-explainer/fixtures \
-  -o results-sonnet.json
+echo "Running with Codex CLI..."
+./waza-bin run examples/repo-resources/eval.yaml \
+  --executor codex-cli --model gpt-5.5 \
+  -o results-codex.json
 
-# Simulate results from other models (in real scenario, change model config)
-cp results-sonnet.json results-gpt4.json
-cp results-sonnet.json results-opus.json
+# Run with Claude CLI
+./waza-bin run examples/repo-resources/eval.yaml \
+  --executor claude-cli --model claude-sonnet-4.6 \
+  -o results-claude.json
+
+# Run with Hermes CLI (replace the model with one configured in Hermes)
+./waza-bin run examples/repo-resources/eval.yaml \
+  --executor hermes-cli --model deepseek/deepseek-v4-flash \
+  -o results-hermes.json
 
 # Compare results across models
 echo ""
 echo "📊 Comparing results across models:"
 ./waza-bin compare \
-  results-sonnet.json \
-  results-gpt4.json \
-  results-opus.json
+  results-codex.json \
+  results-claude.json \
+  results-hermes.json
 
 # Show detailed comparison with formatting
 echo ""
@@ -786,11 +793,11 @@ make build
 ./waza-bin run examples/code-explainer/eval.yaml --help
 ```
 
-### Mock executor not working
+### Executor executable not found
 Ensure eval.yaml contains:
 ```yaml
 config:
-  executor: mock
+  executor: codex-cli
 ```
 
 ### Results not saved

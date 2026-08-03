@@ -76,7 +76,7 @@ func TestSuggestCommand_DryRunYAML(t *testing.T) {
     trials_per_task: 1
     timeout_seconds: 120
     parallel: false
-    executor: mock
+    executor: codex-cli
     model: test
   graders:
     - type: code
@@ -132,7 +132,7 @@ func TestSuggestCommand_PassesCountAndFocusToPrompt(t *testing.T) {
     trials_per_task: 1
     timeout_seconds: 120
     parallel: false
-    executor: mock
+    executor: codex-cli
     model: test
   graders:
     - type: code
@@ -217,7 +217,7 @@ func TestSuggestCommand_ApplyWritesFiles(t *testing.T) {
     trials_per_task: 1
     timeout_seconds: 120
     parallel: false
-    executor: mock
+    executor: codex-cli
     model: test
   graders:
     - type: code
@@ -284,7 +284,7 @@ func TestSuggestCommand_ApplyUsesProjectConfigFileNames(t *testing.T) {
     trials_per_task: 1
     timeout_seconds: 120
     parallel: false
-    executor: mock
+    executor: codex-cli
     model: test
   graders:
     - type: code

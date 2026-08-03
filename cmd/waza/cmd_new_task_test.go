@@ -69,6 +69,12 @@ func TestNewTaskCommand_HasFromPromptSubcommand(t *testing.T) {
 	assert.True(t, found, "new task command should include the from-prompt subcommand")
 }
 
+func TestNewTaskFromPromptCommandExplainsCopilotOnlyLimit(t *testing.T) {
+	cmd := newTaskFromPromptCmd(nil)
+	assert.Contains(t, cmd.Long, "Copilot-only")
+	assert.Contains(t, cmd.Long, "does not use the executor")
+}
+
 func TestNewTaskFromPromptCommand_RequiresTwoArgs(t *testing.T) {
 	cmd := newTaskFromPromptCmd(nil)
 	cmd.SetOut(&bytes.Buffer{})

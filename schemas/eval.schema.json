@@ -113,6 +113,21 @@
       ],
       "additionalProperties": false,
       "description": "Execution configuration for the evaluation.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "executor": { "const": "generic-cli" }
+            }
+          },
+          "then": {
+            "required": ["executor_config"],
+            "properties": {
+              "executor_config": { "required": ["command"] }
+            }
+          }
+        }
+      ],
       "properties": {
         "trials_per_task": {
           "type": "integer",
@@ -149,9 +164,56 @@
           "type": "string",
           "enum": [
             "copilot-sdk",
-            "mock"
+            "codex-cli",
+            "claude-cli",
+            "hermes-cli",
+            "generic-cli"
           ],
-          "description": "Execution engine to use. 'copilot-sdk' for real evaluations, 'mock' for testing."
+          "description": "Execution engine to use. CLI executors run the locally installed client in an isolated evaluation workspace."
+        },
+        "executor_config": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Process options for CLI-backed executors. Commands are executed directly without a shell.",
+          "properties": {
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Executable name or absolute path. Required for generic-cli; built-in CLI executors have defaults."
+            },
+            "args": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Additional argv entries passed directly to the executable."
+            },
+            "prompt_transport": {
+              "type": "string",
+              "enum": ["stdin", "argument"],
+              "description": "How the prompt is delivered. stdin is the safe default for generic-cli."
+            },
+            "output_format": {
+              "type": "string",
+              "enum": ["text", "jsonl"],
+              "description": "Output parser. Built-in executors select their native format automatically."
+            },
+            "env_allowlist": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "description": "Environment variables inherited by generic-cli in addition to PATH and TMPDIR."
+            },
+            "allow_skill_shadowing": {
+              "type": "boolean",
+              "default": false,
+              "description": "Allow a globally visible same-named skill even though it can contaminate baseline comparisons."
+            },
+            "safe_mode": {
+              "type": "boolean",
+              "description": "Enable a client's troubleshooting safety mode when supported. Hermes safe mode disables skills and is rejected for skill evaluations."
+            }
+          }
         },
         "model": {
           "type": "string",

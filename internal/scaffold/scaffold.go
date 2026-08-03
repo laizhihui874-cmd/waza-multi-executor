@@ -78,6 +78,16 @@ func EvalYAML(name, engine, model string) string {
 
 // EvalYAMLWithTaskGlob returns a default eval template using the given task glob.
 func EvalYAMLWithTaskGlob(name, engine, model, taskGlob string) string {
+	executorConfig := ""
+	if engine == "generic-cli" {
+		executorConfig = `  executor_config:
+    # Replace this placeholder with the executable for your agent.
+    command: my-agent
+    args: []
+    prompt_transport: stdin
+    output_format: text
+`
+	}
 	return fmt.Sprintf(`name: %s-eval
 description: Evaluation suite for %s.
 skill: %s
@@ -89,7 +99,7 @@ config:
   parallel: false
   executor: %s
   model: %s
-metrics:
+%smetrics:
   - name: task_completion
     weight: 1.0
     threshold: 0.8
@@ -107,7 +117,7 @@ graders:
         - "(?i)(explain|describe|analyze|implement)"
 tasks:
   - %q
-`, name, name, name, engine, model, taskGlob)
+`, name, name, name, engine, model, executorConfig, taskGlob)
 }
 
 // TaskFiles returns a map of task filename to content.

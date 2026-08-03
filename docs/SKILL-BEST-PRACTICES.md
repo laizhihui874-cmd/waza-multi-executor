@@ -160,7 +160,7 @@ When generating evals with waza, the tool will automatically:
 waza new skill my-skill --output-dir ./eval
 
 # Run evaluation
-waza run ./eval/eval.yaml --executor mock -v
+waza run ./eval/eval.yaml --executor codex-cli -v
 
 # For real integration testing
 waza run ./eval/eval.yaml --executor copilot-sdk --model claude-sonnet-4

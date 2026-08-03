@@ -123,7 +123,7 @@ version: "1.0"
 config:
   trials_per_task: 1
   timeout_seconds: 300
-  executor: mock          # Use mock for CI (no API keys)
+  executor: codex-cli          # Authenticate Codex in the CI environment
   parallel: false
 
 graders:
@@ -232,15 +232,16 @@ jobs:
 
 ### Step 3: Configure the Executor
 
-For CI, use the **mock executor** (no API keys needed):
+For CI, use an installed, authenticated executor such as Codex CLI:
 
 ```yaml
 # eval/eval.yaml
 config:
-  executor: mock  # Simulates agent behavior for testing
+  executor: codex-cli
+  model: gpt-5.5
 ```
 
-For production testing with real AI models, use the **copilot-sdk executor**:
+To use Copilot instead, select the **copilot-sdk executor**:
 
 ```yaml
 # eval/eval.yaml
@@ -304,8 +305,8 @@ Output structure:
     "version": "1.0"
   },
   "config": {
-    "executor": "mock",
-    "model": "mock-model",
+    "executor": "codex-cli",
+    "model": "gpt-5.5",
     "trials_per_task": 1
   },
   "outcomes": [
@@ -351,19 +352,20 @@ See [docs/GRADERS.md](https://github.com/microsoft/waza/blob/main/docs/GRADERS.m
 
 ## Best Practices
 
-### 1. Use Mock Executor for Fast Feedback
+### 1. Separate Static Checks from Authenticated Evals
 
-The mock executor runs instantly without API calls:
+Run schema and skill checks on every pull request, then run real model evaluation where the selected client is authenticated:
 
 ```yaml
 config:
-  executor: mock
+  executor: codex-cli
+  model: gpt-5.5
 ```
 
 Use this for:
-- Pull request validation
-- Quick local testing
-- Grader validation
+- Authenticated pull request evaluation
+- Local skill and baseline comparison
+- File and final-output grading
 
 ### 2. Test Locally Before CI
 

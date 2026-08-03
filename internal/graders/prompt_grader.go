@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	copilot "github.com/github/copilot-sdk/go"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/microsoft/waza/internal/execution"
 	"github.com/microsoft/waza/internal/models"
@@ -263,17 +262,17 @@ func promptGraderErrorMessage(resp *execution.ExecutionResponse, err error) stri
 }
 
 func newWazaGraderTools() *struct {
-	Tools    []copilot.Tool
+	Tools    []execution.Tool
 	Passes   []string
 	Failures []string
 } {
 	r := &struct {
-		Tools    []copilot.Tool
+		Tools    []execution.Tool
 		Passes   []string
 		Failures []string
 	}{}
 
-	r.Tools = []copilot.Tool{
+	r.Tools = []execution.Tool{
 		{
 			Name:        wazaPassToolName,
 			Description: "Used by waza graders, this marks the check as passed. This can be called multiple times.",
@@ -290,7 +289,7 @@ func newWazaGraderTools() *struct {
 					},
 				},
 			},
-			Handler: func(invocation copilot.ToolInvocation) (copilot.ToolResult, error) {
+			Handler: func(invocation execution.ToolInvocation) (execution.ToolResult, error) {
 				var args *struct {
 					Description string `mapstructure:"description"`
 					Reason      string `mapstructure:"reason"`
@@ -305,7 +304,7 @@ func newWazaGraderTools() *struct {
 				}
 
 				r.Passes = append(r.Passes, pass)
-				return copilot.ToolResult{}, nil
+				return execution.ToolResult{}, nil
 			},
 		},
 		{
@@ -324,7 +323,7 @@ func newWazaGraderTools() *struct {
 					},
 				},
 			},
-			Handler: func(invocation copilot.ToolInvocation) (copilot.ToolResult, error) {
+			Handler: func(invocation execution.ToolInvocation) (execution.ToolResult, error) {
 				var args *struct {
 					Description string `mapstructure:"description"`
 					Reason      string `mapstructure:"reason"`
@@ -339,7 +338,7 @@ func newWazaGraderTools() *struct {
 				}
 
 				r.Failures = append(r.Failures, failure)
-				return copilot.ToolResult{}, nil
+				return execution.ToolResult{}, nil
 			},
 		},
 	}
@@ -440,7 +439,7 @@ func (p *promptGrader) runPairwiseOnce(
 		magnitude: "equal",
 	}
 
-	tools := []copilot.Tool{
+	tools := []execution.Tool{
 		{
 			Name:        pairwisePickToolName,
 			Description: "Report the winner of the pairwise comparison.",
@@ -464,20 +463,20 @@ func (p *promptGrader) runPairwiseOnce(
 				},
 				"required": []string{"winner", "magnitude", "reasoning"},
 			},
-			Handler: func(invocation copilot.ToolInvocation) (copilot.ToolResult, error) {
+			Handler: func(invocation execution.ToolInvocation) (execution.ToolResult, error) {
 				var args struct {
 					Winner    string `mapstructure:"winner"`
 					Magnitude string `mapstructure:"magnitude"`
 					Reasoning string `mapstructure:"reasoning"`
 				}
 				if err := mapstructure.Decode(invocation.Arguments, &args); err != nil {
-					return copilot.ToolResult{}, nil
+					return execution.ToolResult{}, nil
 				}
 				judgment.winner = args.Winner
 				judgment.magnitude = args.Magnitude
 				judgment.reasoning = args.Reasoning
 				judgment.set = true
-				return copilot.ToolResult{}, nil
+				return execution.ToolResult{}, nil
 			},
 		},
 	}

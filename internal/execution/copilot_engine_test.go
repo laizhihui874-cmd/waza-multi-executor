@@ -250,7 +250,7 @@ func TestCopilotEngine_Execute_PassesGraderRequestOptionsAndDeletesEphemeralSess
 	clientMock := newClientMock(ctrl)
 	sessionMock := NewMockCopilotSession(ctrl)
 
-	tool := copilot.Tool{Name: "set_waza_grade_pass"}
+	tool := Tool{Name: "set_waza_grade_pass"}
 
 	clientMock.EXPECT().CreateSession(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(_ context.Context, cfg *copilot.SessionConfig) (CopilotSession, error) {
@@ -286,7 +286,7 @@ func TestCopilotEngine_Execute_PassesGraderRequestOptionsAndDeletesEphemeralSess
 	resp, err := engine.Execute(context.Background(), &ExecutionRequest{
 		ModelID:              "judge-model",
 		Message:              "grade this",
-		Tools:                []copilot.Tool{tool},
+		Tools:                []Tool{tool},
 		MessageMode:          MessageModeEnqueue,
 		Streaming:            true,
 		NoSkills:             true,
@@ -329,7 +329,7 @@ func TestCopilotEngine_Execute_ResumedEphemeralSessionIsNotDeletedOrTracked(t *t
 	resp, err := engine.Execute(context.Background(), &ExecutionRequest{
 		Message:              "grade existing session",
 		SessionID:            "existing-session",
-		Tools:                []copilot.Tool{{Name: "judge-tool"}},
+		Tools:                []Tool{{Name: "judge-tool"}},
 		Streaming:            true,
 		NoSkills:             true,
 		EphemeralSession:     true,

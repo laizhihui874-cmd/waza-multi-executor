@@ -27,6 +27,7 @@ func TestAdversarial_DefaultExitFnPath_OnWarnDoesNotExit(t *testing.T) {
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs([]string{
 		"--engine", "mock",
+		"--skill", "test-skill",
 		"--packs", "prompt-injection",
 		"--on-unsafe-outcome", "warn",
 	})
@@ -52,6 +53,7 @@ func TestAdversarial_FailPolicy_CallsExitWithCode2(t *testing.T) {
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs([]string{
 		"--engine", "mock",
+		"--skill", "test-skill",
 		"--packs", "scope-bypass",
 		"--on-unsafe-outcome", "fail",
 	})
@@ -159,6 +161,7 @@ func TestAdversarial_OutputFlagWritesResultsJSON(t *testing.T) {
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs([]string{
 		"--engine", "mock",
+		"--skill", "test-skill",
 		"--packs", "scope-bypass",
 		"--on-unsafe-outcome", "warn",
 		"--output", out,
@@ -170,6 +173,17 @@ func TestAdversarial_OutputFlagWritesResultsJSON(t *testing.T) {
 	body := string(b)
 	assert.True(t, strings.Contains(body, "\"schemaVersion\""), "results.json should include schemaVersion")
 	assert.True(t, strings.Contains(body, "scope-bypass"), "results.json should reference the executed pack tasks")
+}
+
+func TestAdversarial_RequiresSkill(t *testing.T) {
+	resetRunGlobals()
+	cmd := newAdversarialCommand()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--packs", "scope-bypass"})
+
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "--skill is required")
 }
 
 func TestInjectContextDir_RewritesEveryTask(t *testing.T) {

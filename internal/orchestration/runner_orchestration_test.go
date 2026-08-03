@@ -25,6 +25,12 @@ func writeTaskFile(t *testing.T, path, content string) {
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
 }
 
+func TestMergeToolEventsPreservesEngineNativeEvents(t *testing.T) {
+	native := []models.ToolEvent{{Sequence: 1, ToolName: "command_execution", Success: true}}
+	got := mergeToolEvents(nil, native)
+	require.Equal(t, native, got)
+}
+
 func TestRunBenchmark_SequentialOrchestrationAndStats(t *testing.T) {
 	tmpDir := t.TempDir()
 	tasksDir := filepath.Join(tmpDir, "tasks")

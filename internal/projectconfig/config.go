@@ -370,6 +370,11 @@ func mergeConfig(dst, src *ProjectConfig) {
 }
 
 func validateConfig(cfg *ProjectConfig) error {
+	switch cfg.Defaults.Engine {
+	case "copilot-sdk", "codex-cli", "claude-cli", "hermes-cli", "generic-cli":
+	default:
+		return fmt.Errorf("defaults.engine must be one of copilot-sdk, codex-cli, claude-cli, hermes-cli, generic-cli; got %q", cfg.Defaults.Engine)
+	}
 	if err := validateFileName("files.evalFile", cfg.Files.EvalFile); err != nil {
 		return err
 	}

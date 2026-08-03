@@ -21,7 +21,7 @@ import (
 func newNewTaskCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "task",
-		Short: "Automatically create tasks, using copilot logs or prompts",
+		Short: "Automatically create tasks using Copilot SDK recordings",
 	}
 
 	rootCmd.AddCommand(newTaskFromPromptCmd(nil))
@@ -75,6 +75,7 @@ func newTaskFromPromptCmd(options *newTaskFromPromptCmdOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "from-prompt <prompt> <task path>",
 		Short: "Run your scenario test prompt and automatically generate a task file with graders",
+		Long:  "Run a prompt through the Copilot SDK and generate a task file with graders. This command is Copilot-only and does not use the executor configured in eval.yaml.",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) (finalErr error) {
 			prompt, taskFilePath := args[0], args[1]

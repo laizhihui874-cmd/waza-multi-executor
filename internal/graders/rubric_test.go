@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	copilot "github.com/github/copilot-sdk/go"
 	"github.com/microsoft/waza/internal/execution"
 	"github.com/microsoft/waza/internal/models"
 	"github.com/stretchr/testify/require"
@@ -252,7 +251,7 @@ func TestPairwiseMode_IncludesRubricMetadata(t *testing.T) {
 			winner = "A"
 		}
 		require.Len(t, req.Tools, 1)
-		_, err := req.Tools[0].Handler(copilot.ToolInvocation{
+		_, err := req.Tools[0].Handler(execution.ToolInvocation{
 			Arguments: map[string]any{
 				"winner":    winner,
 				"magnitude": "much-better",
@@ -325,7 +324,7 @@ func TestRubricGoldens_OracleJudge(t *testing.T) {
 							}
 							for _, tool := range req.Tools {
 								if tool.Name == toolName {
-									_, err := tool.Handler(copilot.ToolInvocation{
+									_, err := tool.Handler(execution.ToolInvocation{
 										Arguments: map[string]any{
 											"description": golden.Name,
 											"reason":      "oracle judge",

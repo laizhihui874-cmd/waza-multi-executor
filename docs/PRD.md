@@ -193,7 +193,7 @@ Package waza as an Azure Developer CLI extension.
 ├── cmd/waza/           # CLI entrypoint
 ├── internal/
 │   ├── config/         # Configuration loading
-│   ├── execution/      # Executors (mock, copilot)
+│   ├── execution/      # Executor registry, Copilot adapter, and CLI adapters
 │   ├── models/         # Data models (spec, task, outcome)
 │   ├── orchestration/  # Runner, task coordination
 │   ├── scoring/        # Graders, validators
