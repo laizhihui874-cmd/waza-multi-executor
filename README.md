@@ -7,11 +7,72 @@
 
 A Go CLI for evaluating AI agent skills — scaffold eval suites, run benchmarks, and compare results across models.
 
-📖 **[Getting Started / Docs](https://microsoft.github.io/waza/)**
+📖 **[Getting Started](docs/GETTING-STARTED.md) · [Executor Guide](docs/EXECUTORS.md) · [Upstream Waza](https://github.com/microsoft/waza)**
+
+## Why This Fork Exists
+
+Microsoft Waza provided the evaluation framework and the Copilot SDK engine. This fork extends the framework so teams can evaluate the same skill with the real agent client they already use, while preserving a clean skills-enabled versus baseline comparison.
+
+The comparison below is against upstream commit [`f466c4f`](https://github.com/microsoft/waza/commit/f466c4fddf71144f42311d7c4157e8c8b3f0fed6), the base of this fork. It does not claim that later upstream versions have remained unchanged.
+
+| Area | Microsoft upstream at `f466c4f` | This fork |
+|---|---|---|
+| Product executors | `copilot-sdk` and a user-visible `mock` | Five real executors: `copilot-sdk`, `codex-cli`, `claude-cli`, `hermes-cli`, and `generic-cli`; no product `mock` entry |
+| Executor selection | Hard-coded selection in the run command | Registry and factory with declared capabilities; temporary `--executor` override |
+| Request boundary | Core execution request exposed Copilot SDK types | Engine-neutral tools, permissions, and MCP configuration; Copilot conversion stays inside its adapter |
+| CLI protocol | No general external-client runner | Direct executable plus argv, stdin/argument prompt transport, `text`/`jsonl` output, and an explicit environment allowlist |
+| Skill delivery | Copilot-oriented loading and optional prompt-body injection | Native discovery for Codex, Claude, and Hermes; convention-based delivery for Generic CLI |
+| Baseline isolation | No cross-client global-skill contamination guard | Matching temporary workspaces, target skill only in the skill run, and same-name global skill detection |
+| Process lifecycle | No shared subprocess layer for agent CLIs | Timeout and cancellation, process-tree cleanup, bounded stdout/stderr, path containment, and artifact capture |
+| Evidence compatibility | Primarily Copilot SDK events | Native usage/event parsers plus preflight rejection when a grader requires evidence the selected executor cannot produce |
+
+## What We Implemented and Optimized
+
+- **Multi-executor architecture** — added a concurrency-safe executor registry, factories, stable descriptors, and capability declarations for tool events, usage, MCP, prompt tools, sessions, and skill-invocation evidence.
+- **Real client adapters** — Codex runs `codex exec --json --ephemeral`; Claude uses its streaming JSON print protocol; Hermes uses a real one-shot run and usage file; Generic CLI follows a documented argv/stdin/JSONL contract.
+- **Safer subprocess execution** — commands never pass through an implicit shell, stdout and stderr are captured separately with limits, cancellation kills residual process trees, and all relative work paths stay inside the Waza workspace.
+- **Cleaner skill evaluation** — each client receives the target skill through its native discovery location. Baseline runs receive the same fixture resources without the target skill, and global same-name skills fail fast instead of silently polluting the comparison.
+- **Fail-loud capability checks** — eval-level, task, and checkpoint graders, MCP settings, trigger tests, responders, and follow-up turns are checked before model execution. Unsupported evidence is reported rather than skipped.
+- **Broader verification** — added parser, process, schema, registry, isolation, cancellation, authentication, malformed-output, path-escape, and contamination tests; updated examples, schemas, CLI help, and the documentation site.
+
+### Verified State
+
+- `go test ./...`, `go build ./...`, and golangci-lint pass.
+- `internal/execution` statement coverage is 83.1%; newly added execution files are 82.9% covered.
+- Windows amd64 cross-compilation and the 24-page documentation build pass.
+- Real skills-enabled and baseline smoke runs pass with Generic CLI, Codex, and Hermes. Claude reaches the real client protocol and reports a clear login requirement when the local client is unauthenticated.
+
+### Current Boundaries
+
+- Final-output and workspace-file grading work across all five executors.
+- MCP configuration, prompt-tool graders, resumable sessions, and skill-invocation evidence remain Copilot-only unless another adapter explicitly declares and implements the capability. Waza rejects incompatible configurations during preflight.
+- Hermes intentionally does not invent tool traces in its first adapter version.
+- This fork does not yet publish release binaries. Build it from source to use the multi-executor changes.
 
 ## Installation
 
-### Binary Install (recommended)
+### Build This Fork From Source
+
+Requires Go 1.26.4 or newer. Go 1.26.5 or a later patched release is recommended because it fixes the standard-library vulnerability `GO-2026-5856` present in Go 1.26.4.
+
+```bash
+git clone https://github.com/laizhihui874-cmd/waza-multi-executor.git
+cd waza-multi-executor
+
+# Fetch the Copilot binary artifacts tracked by Git LFS.
+git lfs install
+git lfs pull
+
+go build -o waza ./cmd/waza
+./waza --help
+```
+
+See [Executor configuration](docs/EXECUTORS.md) before selecting a CLI client.
+
+### Microsoft Upstream Binary
+
+> The following installers and releases are maintained by Microsoft and do
+> **not** contain this fork's multi-executor changes.
 
 Download and install the latest pre-built binary with the Bash install script on macOS, Linux, or Windows Bash environments such as Git Bash, MSYS2, or Cygwin:
 
@@ -29,31 +90,13 @@ irm https://raw.githubusercontent.com/microsoft/waza/main/install.ps1 | iex
 
 The PowerShell script downloads the latest standalone native Windows `waza` binary, verifies the checksum, and installs to an existing `waza.exe` location or `%LOCALAPPDATA%\Microsoft\Waza`. On Windows, piping the Bash command from PowerShell may invoke WSL and install the Linux binary inside WSL.
 
-Or browse the [GitHub Releases](https://github.com/microsoft/waza/releases) page and choose the standalone waza binary assets for the version you want.
-
-### Install from Source
-
-Requires Go 1.26+:
-
-Note: due to the use of LFS artifacts you cannot install waza using `go install`. To install waza outside of a normal release, clone the repository:
-
-```bash
-git clone https://github.com/microsoft/waza.git
-cd waza
-
-# ensure git LFS-based artifacts are available (for embedded copilot binaries)
-git lfs install
-git lfs pull
-
-go build -o waza ./cmd/waza
-./waza <waza command line>
-```
+Or browse the [Microsoft Waza Releases](https://github.com/microsoft/waza/releases) page and choose the official standalone binary assets.
 
 Waza bundles the GitHub Copilot CLI used by the `copilot-sdk` executor and extracts it to the local user cache on first use. Set `COPILOT_CLI_PATH` only when you need to force a specific Copilot CLI binary.
 
-### Azure Developer CLI (azd) Extension
+### Microsoft Upstream Azure Developer CLI (azd) Extension
 
-Waza is also available as an [azd extension](https://learn.microsoft.com/azure/developer/azure-developer-cli/extensions/overview):
+Microsoft Waza is also available as an [azd extension](https://learn.microsoft.com/azure/developer/azure-developer-cli/extensions/overview). This extension does **not** contain the fork's multi-executor changes:
 
 ```bash
 # Add the waza extension registry
@@ -74,6 +117,10 @@ azd waza run examples/code-explainer/eval.yaml -v
 ```
 
 ## Update Notifications
+
+> **Fork warning:** the inherited `waza update` command installs a Microsoft
+> upstream release and will replace this fork's binary. Until this fork has its
+> own release channel, update it with Git and rebuild from source instead.
 
 Waza automatically checks for new versions in the background. If an update is available, a notice appears after command output:
 
